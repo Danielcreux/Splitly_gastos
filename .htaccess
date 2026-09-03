@@ -1,0 +1,22 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(?:config|database|includes|src|tests)(?:/|$) - [F,L,NC]
+  RewriteRule ^(?:\.git|\.env)(?:/|$) - [F,L,NC]
+</IfModule>
+
+<FilesMatch "(?i)(?:^\.env|^README(?:\.md)?$|\.(?:sql|md|log|bak|ini))$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "^\.(?:git|env)">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "same-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
