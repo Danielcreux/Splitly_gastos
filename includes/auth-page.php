@@ -32,7 +32,7 @@ $resetToken = $authMode === 'reset' ? (string) ($_GET['token'] ?? '') : '';
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/auth.css">
 </head>
-<body>
+<body class="auth-mode-<?= htmlspecialchars($authMode, ENT_QUOTES, 'UTF-8') ?>">
   <main class="auth-shell">
     <section class="auth-showcase">
       <a class="auth-brand" href="login.php"><i>S</i><span>Splitly</span></a>
@@ -48,6 +48,7 @@ $resetToken = $authMode === 'reset' ? (string) ($_GET['token'] ?? '') : '';
     <section class="auth-panel">
       <div class="auth-box">
         <div class="mobile-brand"><i>S</i><span>Splitly</span></div>
+        <div class="auth-card">
         <header><h2><?= htmlspecialchars($config[0]) ?></h2><p><?= htmlspecialchars($config[1]) ?></p></header>
 
         <div class="auth-alert" id="authAlert" role="alert"></div>
@@ -91,6 +92,7 @@ $resetToken = $authMode === 'reset' ? (string) ($_GET['token'] ?? '') : '';
             </form>
           <?php endif; ?>
         <?php endif; ?>
+        </div>
       </div>
       <footer>© <?= date('Y') ?> Splitly · Privacidad · Términos</footer>
     </section>

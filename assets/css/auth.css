@@ -7,3 +7,42 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{min-width:320px;mi
 @media(max-width:480px){.auth-panel{padding-left:max(17px,env(safe-area-inset-left));padding-right:max(17px,env(safe-area-inset-right))}.auth-box{margin:0 auto auto}.auth-box header{margin-bottom:23px}.auth-box h2{font-size:1.55rem}.auth-switch{margin:19px 0}.auth-panel footer{margin-top:28px}}
 @media(max-height:650px) and (max-width:900px){.mobile-brand{margin-bottom:20px}.auth-panel{padding-top:calc(18px + env(safe-area-inset-top))}.auth-form{gap:12px}.auth-box header{margin-bottom:18px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Identidad visual verde para el acceso desde movil. */
+.auth-card{display:contents}
+@media(max-width:900px){
+  body{background:#064938}
+  .auth-shell{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(155deg,#0b7257 0%,#064938 58%,#043a2e 100%)}
+  .auth-shell::before,.auth-shell::after{content:"";position:fixed;z-index:-1;border-radius:50%;pointer-events:none}
+  .auth-shell::before{width:330px;height:330px;right:-170px;top:-125px;border:1px solid rgba(185,245,220,.2);box-shadow:0 0 0 55px rgba(185,245,220,.035)}
+  .auth-shell::after{width:260px;height:260px;left:-155px;bottom:-115px;background:rgba(126,226,185,.07);border:1px solid rgba(185,245,220,.12)}
+  .auth-panel{position:relative;background:transparent}
+  .auth-box{max-width:500px}
+  .mobile-brand{color:#fff;margin-left:7px;text-shadow:0 2px 12px rgba(0,0,0,.12)}
+  .mobile-brand i{color:var(--mint)}
+  .auth-card{display:block;padding:clamp(23px,6vw,32px);border:1px solid rgba(255,255,255,.55);border-radius:24px;background:rgba(255,255,255,.98);box-shadow:0 24px 65px rgba(1,35,26,.25)}
+  .auth-panel footer{color:rgba(255,255,255,.62)}
+}
+@media(max-width:480px){
+  .auth-card{padding:24px 20px 20px;border-radius:21px}
+  .auth-box header{margin-bottom:24px}
+  .auth-form input{background:#fbfdfc;border-color:#d7e4df;border-radius:11px}
+  .auth-submit{border-radius:11px;box-shadow:0 8px 20px rgba(7,90,69,.22)}
+}
+@media(max-height:720px) and (max-width:900px){
+  .auth-card{padding-top:21px;padding-bottom:18px}
+}
+
+/* El acceso usa la altura visible y solo desplaza cuando el formulario no cabe. */
+@media(max-width:900px){
+  .auth-mode-login .auth-panel{height:100dvh;min-height:100dvh;overflow-y:auto;justify-content:flex-start}
+  .auth-mode-login .auth-box{flex:0 0 auto;margin:0 auto}
+  .auth-mode-login .mobile-brand{margin-bottom:clamp(20px,4vh,32px)}
+  .auth-mode-login .auth-panel footer{margin-top:auto;padding-top:20px;flex:0 0 auto}
+}
+@media(max-height:650px) and (max-width:900px){
+  .auth-mode-login .mobile-brand{margin-bottom:15px}
+  .auth-mode-login .auth-card{padding-top:18px;padding-bottom:16px}
+  .auth-mode-login .auth-box header{margin-bottom:17px}
+  .auth-mode-login .auth-panel footer{padding-top:14px;margin-top:14px}
+}

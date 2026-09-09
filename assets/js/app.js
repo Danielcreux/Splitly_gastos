@@ -83,6 +83,8 @@
 
     $$('.app-view').forEach(item => item.classList.toggle('active', item === view));
     $$('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
+    $$('.mobile-tab[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
+    $('#mobileMoreToggle')?.classList.toggle('active', ['activity', 'stats', 'settings'].includes(viewName));
     $('#pageTitle').textContent = view.dataset.title;
     $('#pageSubtitle').textContent = view.dataset.subtitle;
     document.title = `${view.dataset.title.replace(' 👋', '')} · Splitly`;
@@ -97,6 +99,7 @@
     sidebar.classList.add('open');
     overlay.classList.add('open');
     $('#menuToggle')?.setAttribute('aria-expanded', 'true');
+    $('#mobileMoreToggle')?.setAttribute('aria-expanded', 'true');
     syncBodyScrollLock();
   }
 
@@ -104,6 +107,7 @@
     sidebar.classList.remove('open');
     overlay.classList.remove('open');
     $('#menuToggle')?.setAttribute('aria-expanded', 'false');
+    $('#mobileMoreToggle')?.setAttribute('aria-expanded', 'false');
     syncBodyScrollLock();
   }
 
@@ -574,6 +578,7 @@
   });
 
   $('#menuToggle').addEventListener('click', openSidebar);
+  $('#mobileMoreToggle')?.addEventListener('click', openSidebar);
   overlay.addEventListener('click', closeSidebar);
   $('#globalSearch').addEventListener('input', event => filterVisibleView(event.target.value));
   $('#expenseForm [name="group_id"]')?.addEventListener('change', event => updatePayerOptions(event.target.value, window.SplitlyData.currentUserId));
