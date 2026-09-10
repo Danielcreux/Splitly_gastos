@@ -655,6 +655,41 @@
   $('#settingsForm')?.addEventListener('reset', () => {
     setTimeout(() => notify('Cambios descartados.'), 0);
   });
+  $('#generateShortcutToken')?.addEventListener('click', event => {
+    const button = event.currentTarget;
+    const data = new FormData();
+    data.set('action', 'generate');
+    button.disabled = true;
+    postApi('api/shortcuts/token.php', data).then(result => {
+      $('#shortcutTokenValue').value = result.token;
+      $('#shortcutTokenResult').classList.remove('hidden');
+      notify('Token del Atajo creado. Guárdalo ahora.');
+    }).catch(error => notify(error.message)).finally(() => { button.disabled = false; });
+  });
+  $('#revokeShortcutToken')?.addEventListener('click', event => {
+    requestConfirmation({
+      title: 'Revocar token del Atajo',
+      message: 'El Atajo dejará de funcionar hasta que generes y guardes un token nuevo.',
+      confirmLabel: 'Revocar token'
+    }, event.currentTarget).then(confirmed => {
+      if (!confirmed) return;
+      const data = new FormData();
+      data.set('action', 'revoke');
+      postApi('api/shortcuts/token.php', data).then(result => {
+        $('#shortcutTokenValue').value = '';
+        $('#shortcutTokenResult').classList.add('hidden');
+        notify(result.message);
+      }).catch(error => notify(error.message));
+    });
+  });
+  $('#copyShortcutToken')?.addEventListener('click', () => {
+    const token = $('#shortcutTokenValue').value;
+    if (!token) return;
+    navigator.clipboard.writeText(token).then(() => notify('Token copiado.')).catch(() => {
+      $('#shortcutTokenValue').select();
+      notify('Selecciona y copia el token.');
+    });
+  });
   $$('[data-settings-target]').forEach(button => button.addEventListener('click', () => {
     $$('.settings-nav button').forEach(item => item.classList.toggle('active', item === button));
     $(`#${button.dataset.settingsTarget}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });

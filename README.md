@@ -25,6 +25,7 @@ Splitly permite crear grupos, invitar participantes, registrar quién pagó cada
 - Cálculo de balances y propuesta de liquidaciones.
 - Historial de actividad, estadísticas y gráficos interactivos.
 - Preferencias de notificaciones por usuario.
+- API autenticada para registrar gastos desde Atajos de iOS y Siri.
 - Diseño responsive para escritorio, tablet y móvil.
 
 ## Tecnologías
@@ -91,6 +92,12 @@ DB_PASS=una-clave-segura
 ```
 
 PHP debe recibir estas variables desde el servidor o proveedor de alojamiento; el proyecto no carga archivos `.env` automáticamente.
+
+## Atajo de iOS
+
+Splitly permite crear desde **Configuración** un token revocable para registrar gastos mediante Atajos o Siri. El token se solicita en la primera ejecución y puede conservarse en iCloud Drive para no volver a pedirlo.
+
+Consulta [la guía de configuración del Atajo](docs/atajo-ios.md) para construir el flujo y conocer el contrato JSON de la API.
 
 ## Arquitectura
 

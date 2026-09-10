@@ -16,6 +16,18 @@
       <div class="form-section"><div><strong>Pagos recibidos</strong><p>Te avisaremos al registrar una liquidación.</p></div><label class="switch"><input name="notify_payment" type="checkbox" <?= $currentUser['notify_payment'] ? 'checked' : '' ?>><span></span></label></div>
       <div class="form-section"><div><strong>Recordatorios de pago</strong><p>Recibe recordatorios sobre saldos pendientes.</p></div><label class="switch"><input name="notify_payment_reminder" type="checkbox" <?= $currentUser['notify_payment_reminder'] ? 'checked' : '' ?>><span></span></label></div>
       <div class="form-section"><div><strong>Actualizaciones de grupos</strong><p>Recibe avisos sobre invitaciones aceptadas o rechazadas.</p></div><label class="switch"><input name="notify_group_updates" type="checkbox" <?= $currentUser['notify_group_updates'] ? 'checked' : '' ?>><span></span></label></div>
+      <section class="shortcut-settings" aria-labelledby="shortcutSettingsTitle">
+        <div class="shortcut-settings-copy"><span class="shortcut-badge">Atajos de iOS</span><h3 id="shortcutSettingsTitle">Añade gastos con Siri</h3><p>Crea un token privado para el Atajo. Al generar uno nuevo, el anterior deja de funcionar.</p></div>
+        <div class="shortcut-token-actions">
+          <button class="button button-outline" type="button" id="revokeShortcutToken">Revocar</button>
+          <button class="button button-primary" type="button" id="generateShortcutToken">Generar token</button>
+        </div>
+        <div class="shortcut-token-result hidden" id="shortcutTokenResult" aria-live="polite">
+          <label><span>Token (se muestra una sola vez)</span><input id="shortcutTokenValue" type="text" readonly></label>
+          <button class="button button-outline" type="button" id="copyShortcutToken">Copiar</button>
+          <small>Pégalo en el Atajo la primera vez. iOS lo conservará para las siguientes ejecuciones.</small>
+        </div>
+      </section>
       <div class="form-actions"><button type="reset" class="button button-outline" data-settings-reset>Cancelar</button><button class="button button-primary" type="submit">Guardar cambios</button></div>
     </form>
   </div>

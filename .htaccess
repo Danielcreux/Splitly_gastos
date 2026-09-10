@@ -1,5 +1,9 @@
 Options -Indexes
 
+<IfModule mod_setenvif.c>
+  SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteRule ^(?:config|database|includes|src|tests)(?:/|$) - [F,L,NC]

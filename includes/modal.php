@@ -5,7 +5,7 @@
     <form id="expenseForm" class="modal-form">
       <input type="hidden" name="expense_id" value="">
       <label class="full-width"><span>Descripción</span><input name="description" required maxlength="180" placeholder="Ej. Compra del supermercado"></label>
-      <label><span>Importe</span><div class="input-suffix"><input name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00"><b>€</b></div></label>
+      <label><span>Importe</span><div class="input-suffix"><input name="amount" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" required placeholder="0,00" title="Usa hasta dos decimales, con coma o punto"><b>€</b></div></label>
       <label><span>Fecha</span><input name="date" type="date" required value="<?= date('Y-m-d') ?>"></label>
       <label><span>Grupo</span><select name="group_id" required><?php foreach ($groups as $group): ?><option value="<?= (int) $group['id'] ?>"><?= e($group['name']) ?></option><?php endforeach; ?></select></label>
       <label><span>Categoría</span><select name="category_id"><option value="1">Compras</option><option value="2">Alimentación</option><option value="3">Restaurante</option><option value="4">Transporte</option><option value="5">Servicios</option><option value="8">Otros</option></select></label>
@@ -16,7 +16,7 @@
 
     <form id="groupForm" class="modal-form hidden">
       <label class="full-width"><span>Nombre del grupo</span><input name="name" required maxlength="120" placeholder="Ej. Vacaciones de verano"></label>
-      <label><span>Presupuesto</span><div class="input-suffix"><input name="budget" type="number" min="0" step="0.01" required placeholder="0,00"><b>€</b></div></label>
+      <label><span>Presupuesto</span><div class="input-suffix"><input name="budget" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" required placeholder="0,00" title="Usa hasta dos decimales, con coma o punto"><b>€</b></div></label>
       <label><span>Descripción</span><input name="description" maxlength="500" placeholder="¿Para qué usaréis este grupo?"></label>
       <div class="participant-picker full-width" data-participant-picker>
         <label><span>Añadir participantes existentes</span><input type="search" name="participant_query" data-user-search autocomplete="off" placeholder="Correo o nombre completo exacto" aria-label="Buscar participante registrado"></label>

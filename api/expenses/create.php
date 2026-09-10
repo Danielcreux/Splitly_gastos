@@ -7,7 +7,7 @@ requirePost();
 $data = requestData();
 $userId = currentUserId();
 $description = trim((string) ($data['description'] ?? ''));
-$amount = filter_var($data['amount'] ?? null, FILTER_VALIDATE_FLOAT);
+$amount = parseLocalizedDecimal($data['amount'] ?? null);
 $date = (string) ($data['date'] ?? '');
 $groupId = filter_var($data['group_id'] ?? null, FILTER_VALIDATE_INT);
 $categoryId = filter_var($data['category_id'] ?? null, FILTER_VALIDATE_INT);

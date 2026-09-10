@@ -9,7 +9,7 @@ $data = requestData();
 $userId = currentUserId();
 $groupId = filter_var($data['group_id'] ?? null, FILTER_VALIDATE_INT);
 $counterpartyId = filter_var($data['counterparty_id'] ?? null, FILTER_VALIDATE_INT);
-$amount = filter_var($data['amount'] ?? null, FILTER_VALIDATE_FLOAT);
+$amount = parseLocalizedDecimal($data['amount'] ?? null);
 $direction = (string) ($data['direction'] ?? '');
 if (!$groupId || !$counterpartyId || $counterpartyId === $userId || $amount === false || $amount <= 0 || !in_array($direction, ['paid_by_me', 'paid_to_me'], true)) {
     respond(['ok' => false, 'message' => 'Los datos de la liquidación no son válidos.'], 422);

@@ -8,7 +8,7 @@ $data = requestData();
 $name = trim((string) ($data['name'] ?? ''));
 $description = trim((string) ($data['description'] ?? ''));
 $participantQuery = trim((string) ($data['participant_query'] ?? ''));
-$budget = filter_var($data['budget'] ?? null, FILTER_VALIDATE_FLOAT);
+$budget = parseLocalizedDecimal($data['budget'] ?? null);
 $participantIds = array_values(array_unique(array_filter(array_map(
     'intval',
     explode(',', (string) ($data['participant_ids'] ?? ''))

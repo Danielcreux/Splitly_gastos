@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/session.php';
 startSecureSession();
 
 require_once __DIR__ . '/../src/Database.php';
+require_once __DIR__ . '/../src/LocalizedDecimal.php';
 
 function respond(array $payload, int $status = 200): never
 {
