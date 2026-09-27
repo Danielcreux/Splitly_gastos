@@ -99,5 +99,6 @@ if ($matchedUsers !== [] && $availableUsers === [] && in_array('pending', $membe
 $users = array_map(static fn(array $user): array => [
     'id' => (int) $user['id'],
     'name' => trim($user['first_name'] . ' ' . ($user['last_name'] ?? '')),
+    'email' => $user['email'],
 ], $availableUsers);
 respond(['ok' => true, 'exists' => $users !== [], 'users' => $users]);

@@ -7,7 +7,8 @@
   <div class="top-actions">
     <label class="search-box"><svg><use href="#i-search"/></svg><input id="globalSearch" type="search" placeholder="Buscar" autocomplete="off"></label>
     <div class="notification-wrap"><button class="icon-button notification" id="notificationToggle" aria-label="Notificaciones" aria-expanded="false"><svg><use href="#i-bell"/></svg><?php if (array_filter($notifications, fn($item) => $item['read_at'] === null)): ?><span></span><?php endif; ?></button>
-      <div class="notification-panel" id="notificationPanel"><div class="notification-head"><strong>Notificaciones</strong><small><?= count(array_filter($notifications, fn($item) => $item['read_at'] === null)) ?> nuevas</small></div>
+      <div class="notification-panel" id="notificationPanel"><div class="notification-head"><strong>Notificaciones</strong><small data-notification-unread><?= count(array_filter($notifications, fn($item) => $item['read_at'] === null)) ?> nuevas</small></div>
+        <div data-notification-list>
         <?php foreach ($notifications as $notification): ?>
           <?php $isGroupInvitation = $notification['type'] === 'group_invitation' && preg_match('/^#group-invitation:(\d+)$/', (string) $notification['action_url'], $invitationMatch); ?>
           <?php if ($isGroupInvitation): ?>
@@ -23,6 +24,8 @@
           <?php endif; ?>
         <?php endforeach; ?>
         <?php if ($notifications === []): ?><p class="notification-empty">No tienes notificaciones.</p><?php endif; ?>
+        </div>
+        <button type="button" class="text-button" data-notification-more data-page="1" <?= count($notifications) < 8 ? 'hidden' : '' ?>>Cargar más</button>
       </div>
     </div>
     <button class="button button-primary" data-open-modal="expense"><svg><use href="#i-plus"/></svg>Añadir gasto</button>

@@ -11,7 +11,7 @@ $groupsStatement = $db->prepare(
     "SELECT g.id, g.name FROM expense_groups g
      INNER JOIN group_members mine ON mine.group_id = g.id
        AND mine.user_id = :user_id AND mine.status = 'active'
-     WHERE g.is_archived = 0 ORDER BY g.name"
+     WHERE g.is_archived = 0 ORDER BY g.name,g.id LIMIT 100"
 );
 $groupsStatement->execute(['user_id' => $userId]);
 $groups = $groupsStatement->fetchAll();
@@ -29,18 +29,30 @@ if ($requestedGroup !== '' && $selectedGroup === null) {
 }
 if ($selectedGroup === null && count($groups) === 1) $selectedGroup = $groups[0];
 
-$membersStatement = $db->prepare(
-    "SELECT u.id, TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))) AS name
-     FROM group_members gm INNER JOIN users u ON u.id = gm.user_id
-     WHERE gm.group_id = :group_id AND gm.status = 'active' ORDER BY gm.joined_at, u.id"
-);
-foreach ($groups as &$group) {
-    $membersStatement->execute(['group_id' => $group['id']]);
-    $group['members'] = $membersStatement->fetchAll();
+$groupsById = [];
+foreach ($groups as $index => &$group) {
+    $group['id'] = (int) $group['id'];
+    $group['members'] = [];
+    $groupsById[$group['id']] = $index;
 }
 unset($group);
+if ($groupsById !== []) {
+    $placeholders = implode(',', array_fill(0, count($groupsById), '?'));
+    $membersStatement = $db->prepare(
+        "SELECT gm.group_id,u.id,TRIM(CONCAT(u.first_name,' ',COALESCE(u.last_name,''))) AS name
+         FROM group_members gm INNER JOIN users u ON u.id=gm.user_id
+         WHERE gm.group_id IN ($placeholders) AND gm.status='active'
+         ORDER BY gm.group_id,gm.joined_at,u.id"
+    );
+    $membersStatement->execute(array_keys($groupsById));
+    foreach ($membersStatement->fetchAll() as $member) {
+        $groups[$groupsById[(int) $member['group_id']]]['members'][] = [
+            'id' => (int) $member['id'], 'name' => $member['name'],
+        ];
+    }
+}
 
-$categories = $db->query('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY name')->fetchAll();
+$categories = $db->query('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY name,id LIMIT 100')->fetchAll();
 $payers = [];
 if ($selectedGroup !== null) {
     foreach ($groups as $group) {

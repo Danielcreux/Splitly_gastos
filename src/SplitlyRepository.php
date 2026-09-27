@@ -24,7 +24,7 @@ final class SplitlyRepository
         return $statement->fetch() ?: null;
     }
 
-    public function groupsForUser(int $userId): array
+    public function groupsForUser(int $userId, int $limit = 20, int $offset = 0): array
     {
         $statement = $this->db->prepare(
             "SELECT g.id, g.name, g.icon, g.color, g.budget, mine.role AS user_role,
@@ -35,13 +35,33 @@ final class SplitlyRepository
                 AND mine.user_id = :user_id AND mine.status = 'active'
              INNER JOIN v_group_summaries summary ON summary.group_id = g.id
              WHERE g.is_archived = 0
-             ORDER BY g.created_at ASC"
+             ORDER BY g.created_at ASC, g.id ASC
+             LIMIT :row_limit OFFSET :row_offset"
         );
-        $statement->execute(['user_id' => $userId]);
+        $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $statement->bindValue(':row_limit', max(1, min($limit, 100)), PDO::PARAM_INT);
+        $statement->bindValue(':row_offset', max(0, $offset), PDO::PARAM_INT);
+        $statement->execute();
         $rows = $statement->fetchAll();
 
+        $membersByGroup = [];
+        if ($rows !== []) {
+            $groupIds = array_map('intval', array_column($rows, 'id'));
+            $placeholders = implode(',', array_fill(0, count($groupIds), '?'));
+            $members = $this->db->prepare(
+                "SELECT gm.group_id,u.id,TRIM(CONCAT(u.first_name,' ',COALESCE(u.last_name,''))) AS name,gm.role
+                 FROM group_members gm INNER JOIN users u ON u.id=gm.user_id
+                 WHERE gm.status='active' AND gm.group_id IN ($placeholders)
+                 ORDER BY gm.group_id,gm.joined_at,gm.user_id"
+            );
+            $members->execute($groupIds);
+            foreach ($members->fetchAll() as $member) {
+                $membersByGroup[(int) $member['group_id']][] = $member;
+            }
+        }
+
         foreach ($rows as &$row) {
-            $row['member_options'] = $this->membersForGroup((int) $row['id']);
+            $row['member_options'] = $membersByGroup[(int) $row['id']] ?? [];
             $row['members'] = array_column($row['member_options'], 'name');
             $row['total'] = (float) $row['total'];
             $row['budget'] = (float) ($row['budget'] ?? 0);
@@ -54,7 +74,7 @@ final class SplitlyRepository
         return $rows;
     }
 
-    public function expensesForUser(int $userId, int $limit = 100): array
+    public function expensesForUser(int $userId, int $limit = 20): array
     {
         $statement = $this->db->prepare(
             "SELECT e.id, e.group_id, e.category_id, e.paid_by, e.split_method, c.name AS category,
@@ -123,7 +143,7 @@ final class SplitlyRepository
         }, $statement->fetchAll());
     }
 
-    public function balancesForUser(int $userId): array
+    public function balancesForUser(int $userId, int $limit = 20): array
     {
         $statement = $this->db->prepare(
             "SELECT b.group_id, b.user_id, b.balance,
@@ -167,7 +187,7 @@ final class SplitlyRepository
             }
         }
         usort($result, static fn(array $a, array $b): int => abs($b['amount']) <=> abs($a['amount']));
-        return array_slice($result, 0, 20);
+        return $limit > 0 ? array_slice($result, 0, $limit) : $result;
     }
 
     public function notificationsForUser(int $userId, int $limit = 8): array
@@ -195,6 +215,44 @@ final class SplitlyRepository
         );
         $statement->execute(['user_id' => $userId]);
         return array_reverse($statement->fetchAll());
+    }
+
+    public function expenseSummaryForUser(int $userId): array
+    {
+        $statement = $this->db->prepare(
+            "SELECT COALESCE(SUM(es.amount_owed),0) AS total_spent,
+                    COALESCE(SUM(CASE WHEN e.expense_date >= DATE_FORMAT(CURRENT_DATE(),'%Y-%m-01')
+                                      AND e.expense_date < DATE_ADD(DATE_FORMAT(CURRENT_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH)
+                                THEN es.amount_owed ELSE 0 END),0) AS month_spent,
+                    COUNT(*) AS expense_count
+             FROM expense_splits es INNER JOIN expenses e ON e.id=es.expense_id AND e.status='active'
+             WHERE es.user_id=:user_id"
+        );
+        $statement->execute(['user_id' => $userId]);
+        $summary = $statement->fetch() ?: [];
+        $groups = $this->db->prepare("SELECT COUNT(*) FROM group_members WHERE user_id=:user_id AND status='active'");
+        $groups->execute(['user_id' => $userId]);
+        return [
+            'total_spent' => (float) ($summary['total_spent'] ?? 0),
+            'month_spent' => (float) ($summary['month_spent'] ?? 0),
+            'expense_count' => (int) ($summary['expense_count'] ?? 0),
+            'group_count' => (int) $groups->fetchColumn(),
+        ];
+    }
+
+    public function categoryTotalsForUser(int $userId): array
+    {
+        $statement = $this->db->prepare(
+            "SELECT COALESCE(c.name,'Otros') AS category,SUM(es.amount_owed) AS total
+             FROM expense_splits es INNER JOIN expenses e ON e.id=es.expense_id AND e.status='active'
+             LEFT JOIN categories c ON c.id=e.category_id
+             WHERE es.user_id=:user_id
+             GROUP BY e.category_id,c.name ORDER BY total DESC,c.name ASC"
+        );
+        $statement->execute(['user_id' => $userId]);
+        $result = [];
+        foreach ($statement->fetchAll() as $row) $result[$row['category']] = (float) $row['total'];
+        return $result;
     }
 
     private function membersForGroup(int $groupId): array

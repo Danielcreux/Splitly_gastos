@@ -42,6 +42,7 @@
 
     <section id="groupDetailPanel" class="group-detail-panel hidden" aria-live="polite">
       <div class="group-member-list" data-group-member-list></div>
+      <button type="button" class="button button-outline" data-group-members-more hidden>Cargar más</button>
       <div class="modal-actions"><button type="button" class="button button-outline" data-close-modal>Cerrar</button></div>
     </section>
   </div>

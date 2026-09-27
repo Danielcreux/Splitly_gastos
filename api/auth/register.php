@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../../src/AuthService.php';
-requirePost();
+requireAuthPost();
 
 $data = requestData();
 $firstName = trim((string) ($data['first_name'] ?? ''));
@@ -27,6 +27,16 @@ if (!hash_equals($password, $confirmation)) {
 
 try {
     $user = (new AuthService(databaseOrFail()))->register($firstName, $lastName, $email, $password);
+    if (isMobileClient()) {
+        $issued = issueApiToken(databaseOrFail(), (int) $user['id']);
+        respond([
+            'ok' => true,
+            'message' => 'Cuenta creada correctamente.',
+            'access_token' => $issued['access_token'],
+            'expires_at' => $issued['expires_at'],
+            'user' => userPayload($user),
+        ], 201);
+    }
     session_regenerate_id(true);
     $_SESSION['user_id'] = (int) $user['id'];
     $_SESSION['user_name'] = $user['first_name'];

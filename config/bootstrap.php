@@ -30,8 +30,8 @@ try {
         exit;
     }
     $databaseGroups = $repository->groupsForUser($currentUserId);
-    $databaseExpenses = $repository->expensesForUser($currentUserId);
-    $databaseActivity = $repository->activityForUser($currentUserId);
+    $databaseExpenses = $repository->expensesForUser($currentUserId, 20);
+    $databaseActivity = $repository->activityForUser($currentUserId, 20);
     $databaseBalances = $repository->balancesForUser($currentUserId);
     $notifications = $repository->notificationsForUser($currentUserId);
 
@@ -41,6 +41,8 @@ try {
     $activity = $databaseActivity;
     $balances = $databaseBalances;
     $monthlyEvolution = $repository->monthlyEvolution($currentUserId);
+    $expenseSummary = $repository->expenseSummaryForUser($currentUserId);
+    $categoryTotals = $repository->categoryTotalsForUser($currentUserId);
     $databaseConnected = true;
 } catch (Throwable $exception) {
     error_log('[Splitly database] ' . $exception->getMessage());
@@ -49,20 +51,16 @@ try {
 }
 
 // Métricas derivadas de una única fuente para evitar cifras hardcodeadas.
-$totalSpent = array_sum(array_map(fn(array $expense): float => (float) ($expense['share'] ?? 0), $expenses));
+$totalSpent = (float) ($expenseSummary['total_spent'] ?? 0);
+$monthSpent = (float) ($expenseSummary['month_spent'] ?? 0);
 $owedToUser = array_sum(array_map(fn(array $balance): float => max(0, (float) $balance['amount']), $balances));
 $userOwes = abs(array_sum(array_map(fn(array $balance): float => min(0, (float) $balance['amount']), $balances)));
 $summary = [
     'total_spent' => $totalSpent,
+    'month_spent' => $monthSpent,
     'owed_to_user' => $owedToUser,
     'user_owes' => $userOwes,
     'net_balance' => $owedToUser - $userOwes,
-    'expense_count' => count($expenses),
-    'group_count' => count($groups),
+    'expense_count' => (int) ($expenseSummary['expense_count'] ?? 0),
+    'group_count' => (int) ($expenseSummary['group_count'] ?? 0),
 ];
-$categoryTotals = [];
-foreach ($expenses as $expense) {
-    $category = (string) ($expense['category'] ?? 'Otros');
-    $categoryTotals[$category] = ($categoryTotals[$category] ?? 0) + (float) ($expense['share'] ?? 0);
-}
-arsort($categoryTotals);

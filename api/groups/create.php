@@ -9,10 +9,14 @@ $name = trim((string) ($data['name'] ?? ''));
 $description = trim((string) ($data['description'] ?? ''));
 $participantQuery = trim((string) ($data['participant_query'] ?? ''));
 $budget = parseLocalizedDecimal($data['budget'] ?? null);
-$participantIds = array_values(array_unique(array_filter(array_map(
-    'intval',
-    explode(',', (string) ($data['participant_ids'] ?? ''))
-), fn(int $id): bool => $id > 0)));
+$rawParticipantIds = $data['participant_ids'] ?? [];
+if (!is_array($rawParticipantIds)) {
+    $rawParticipantIds = explode(',', (string) $rawParticipantIds);
+}
+$participantIds = array_values(array_unique(array_filter(
+    array_map('intval', $rawParticipantIds),
+    fn(int $id): bool => $id > 0
+)));
 $userId = currentUserId();
 
 if ($name === '' || mb_strlen($name) > 120) {

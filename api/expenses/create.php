@@ -42,6 +42,12 @@ try {
         throw new DomainException('El usuario o pagador no pertenece al grupo.');
     }
 
+    $category = $db->prepare('SELECT id FROM categories WHERE id = :id AND is_active = 1 LIMIT 1');
+    $category->execute(['id' => $categoryId]);
+    if (!$category->fetchColumn()) {
+        throw new DomainException('La categoría no está disponible.');
+    }
+
     $expense = $db->prepare(
         "INSERT INTO expenses
            (group_id, category_id, paid_by, created_by, description, amount, expense_date, split_method)

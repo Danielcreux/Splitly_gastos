@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../../src/AuthService.php';
-requirePost();
+requireAuthPost();
 
 $now = time();
 $attempts = $_SESSION['login_attempts'] ?? ['count' => 0, 'started_at' => $now];
@@ -29,6 +29,18 @@ try {
         $attempts['count']++;
         $_SESSION['login_attempts'] = $attempts;
         respond(['ok' => false, 'message' => 'El correo o la contraseña no son correctos.'], 401);
+    }
+
+    if (isMobileClient()) {
+        unset($_SESSION['login_attempts']);
+        $issued = issueApiToken($db, (int) $user['id']);
+        respond([
+            'ok' => true,
+            'message' => 'Sesión iniciada.',
+            'access_token' => $issued['access_token'],
+            'expires_at' => $issued['expires_at'],
+            'user' => userPayload($user),
+        ]);
     }
 
     session_regenerate_id(true);

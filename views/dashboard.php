@@ -2,7 +2,7 @@
   <div class="period-row"><strong>Resumen actualizado</strong></div>
   <div class="dashboard-top">
     <div class="summary-grid">
-      <article class="summary-card primary"><span>Balance total</span><strong><?= ($summary['net_balance'] >= 0 ? '+' : '-') . money($summary['net_balance']) ?></strong><small>Saldo neto actual</small></article>
+      <article class="summary-card primary"><span>Gastos del mes</span><strong><?= money($summary['month_spent']) ?></strong><small>Acumulado del mes actual</small></article>
       <article class="summary-card positive"><span>Te deben</span><strong>+<?= money($summary['owed_to_user']) ?></strong><small><?= count(array_filter($balances, fn($item) => $item['amount'] > 0)) ?> saldos a favor</small></article>
       <article class="summary-card negative"><span>Debes</span><strong>-<?= money($summary['user_owes']) ?></strong><small><?= count(array_filter($balances, fn($item) => $item['amount'] < 0)) ?> saldos pendientes</small></article>
       <article class="summary-card neutral"><span>Gastos registrados</span><strong><?= money($summary['total_spent']) ?></strong><small><?= $summary['expense_count'] ?> movimientos</small></article>

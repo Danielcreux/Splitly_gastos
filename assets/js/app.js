@@ -148,33 +148,89 @@
     setTimeout(() => $('input:not([type="hidden"])', activeForm)?.focus(), 120);
   }
 
-  function openGroupDetails(groupId, groupName) {
-    const members = window.SplitlyData?.groupMembers?.[String(groupId)] || [];
+  async function loadGroupMembers(groupId, page, append = false) {
+    const panel = $('#groupDetailPanel');
+    const list = $('[data-group-member-list]', panel);
+    const more = $('[data-group-members-more]', panel);
+    more.disabled = true;
+    try {
+      const response = await fetch(`api/groups/members.php?group_id=${encodeURIComponent(groupId)}&page=${page}&per_page=20`);
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.data)) throw new Error(result.message || 'No se pudieron cargar los integrantes.');
+      const roles = { owner: 'Propietario', admin: 'Administrador', member: 'Integrante' };
+      const rows = result.data.map(member => {
+        const row = document.createElement('div');
+        row.className = 'group-member-row';
+        const avatar = document.createElement('i');
+        avatar.textContent = member.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase('es');
+        const copy = document.createElement('span');
+        const name = document.createElement('strong');
+        const role = document.createElement('small');
+        name.textContent = member.name;
+        role.textContent = roles[member.role] || 'Integrante';
+        copy.append(name, role);
+        row.append(avatar, copy);
+        return row;
+      });
+      if (append) list.append(...rows); else list.replaceChildren(...rows);
+      $('#modalSubtitle').textContent = `${result.pagination.total} ${result.pagination.total === 1 ? 'integrante' : 'integrantes'}`;
+      more.dataset.groupId = String(groupId);
+      more.dataset.page = String(result.pagination.page);
+      more.hidden = !result.pagination.has_next;
+    } catch (error) {
+      if (!append) list.replaceChildren(textElement('p', error.message || 'Error de red.'));
+      notify(error.message || 'No se pudieron cargar los integrantes.');
+    } finally { more.disabled = false; }
+  }
+
+  async function openGroupDetails(groupId, groupName) {
     $('#expenseForm').classList.add('hidden');
     $('#groupForm').classList.add('hidden');
     $('#memberForm').classList.add('hidden');
     const panel = $('#groupDetailPanel');
     panel.classList.remove('hidden');
     $('#modalTitle').textContent = groupName;
-    $('#modalSubtitle').textContent = `${members.length} ${members.length === 1 ? 'integrante activo' : 'integrantes activos'}`;
-    const roles = { owner: 'Propietario', admin: 'Administrador', member: 'Integrante' };
-    $('[data-group-member-list]', panel).replaceChildren(...members.map(member => {
-      const row = document.createElement('div');
-      row.className = 'group-member-row';
-      const avatar = document.createElement('i');
-      avatar.textContent = member.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase('es');
-      const copy = document.createElement('span');
-      const name = document.createElement('strong');
-      const role = document.createElement('small');
-      name.textContent = member.name;
-      role.textContent = roles[member.role] || 'Integrante';
-      copy.append(name, role);
-      row.append(avatar, copy);
-      return row;
-    }));
+    $('#modalSubtitle').textContent = 'Cargando integrantes…';
+    const list = $('[data-group-member-list]', panel);
+    list.replaceChildren();
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     syncBodyScrollLock();
+    await loadGroupMembers(groupId, 1);
+  }
+
+  function notificationElement(item) {
+    const invitation = item.type === 'group_invitation' && /^#group-invitation:(\d+)$/.exec(item.actionUrl || '');
+    const element = document.createElement(invitation ? 'div' : 'button');
+    if (!invitation) element.type = 'button';
+    element.className = `notification-item ${invitation ? 'group-invitation ' : ''}${item.isRead ? '' : 'unread'}`.trim();
+    if (!invitation) element.dataset.view = (item.actionUrl || '').includes('balance') ? 'balances' : (item.actionUrl || '').includes('group') ? 'groups' : 'expenses';
+    const dot = document.createElement('i');
+    const copy = document.createElement('span'); copy.append(textElement('strong', item.title), textElement('small', item.message));
+    element.append(dot, copy);
+    if (invitation) {
+      const actions = document.createElement('div'); actions.className = 'invitation-actions';
+      for (const [action, label] of [['accept', 'Aceptar'], ['decline', 'Rechazar']]) {
+        const button = document.createElement('button'); button.type = 'button'; button.dataset.invitationAction = action; button.dataset.groupId = invitation[1]; button.textContent = label; actions.append(button);
+      }
+      element.append(actions);
+    }
+    return element;
+  }
+
+  async function loadMoreNotifications(button) {
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const page = Number(button.dataset.page || 1) + 1;
+      const response = await fetch(`api/notifications/index.php?page=${page}&per_page=8`);
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.data)) throw new Error(result.message || 'No se pudieron cargar las notificaciones.');
+      $('[data-notification-list]').append(...result.data.map(notificationElement));
+      button.dataset.page = String(result.pagination.page);
+      button.hidden = !result.pagination.has_next;
+    } catch (error) { notify(error.message || 'No se pudieron cargar las notificaciones.'); }
+    finally { button.disabled = false; }
   }
 
   function closeModal() {
@@ -200,13 +256,114 @@
     });
   }
 
-  function applyExpenseFilters(view) {
-    const filters = {};
-    $$('[data-expense-filter]', view).forEach(select => { filters[select.dataset.expenseFilter] = select.value; });
-    $$('tr[data-id]', view).forEach(row => {
-      const visible = Object.entries(filters).every(([key, value]) => !value || row.dataset[key] === value);
-      row.classList.toggle('filter-hidden', !visible);
-    });
+  const paginationRequests = new WeakMap();
+  const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+
+  function textElement(tag, text, className = '') {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    element.textContent = text ?? '';
+    return element;
+  }
+
+  function renderExpensePage(items) {
+    const body = $('#view-expenses .expense-table tbody');
+    if (!body) return;
+    body.replaceChildren(...items.map(expense => {
+      const row = document.createElement('tr');
+      row.className = 'searchable';
+      row.dataset.id = String(expense.id);
+      row.dataset.expense = JSON.stringify({
+        id: expense.id, description: expense.concept, amount: expense.amount,
+        date: String(expense.date).slice(0, 10), group_id: expense.groupId,
+        category_id: expense.categoryId, payer_id: expense.paidById,
+        split_expense: expense.splitMethod === 'equal'
+      });
+      const category = document.createElement('td'); category.dataset.label = 'Categoría'; category.append(textElement('span', expense.categoryName));
+      const description = document.createElement('td'); description.dataset.label = 'Descripción'; description.append(textElement('strong', expense.concept));
+      const group = textElement('td', expense.groupName); group.dataset.label = 'Grupo';
+      const payer = textElement('td', expense.paidByName); payer.dataset.label = 'Pagado por';
+      const date = textElement('td', new Date(expense.date).toLocaleDateString('es-ES')); date.dataset.label = 'Fecha';
+      const total = textElement('td', euro.format(Number(expense.amount))); total.dataset.label = 'Total';
+      const share = textElement('td', euro.format(Number(expense.yourShare))); share.dataset.label = 'Tu parte';
+      const status = document.createElement('td'); status.dataset.label = 'Estado'; status.append(textElement('span', expense.status || 'Pendiente', `status ${(expense.status || 'Pendiente').toLocaleLowerCase('es')}`));
+      const actions = document.createElement('td'); actions.className = 'row-actions';
+      const edit = document.createElement('button'); edit.type = 'button'; edit.title = 'Editar'; edit.className = 'edit-expense'; edit.innerHTML = '<svg><use href="#i-edit"/></svg>';
+      const remove = document.createElement('button'); remove.type = 'button'; remove.title = 'Eliminar'; remove.className = 'delete-row'; remove.innerHTML = '<svg><use href="#i-trash"/></svg>';
+      actions.append(edit, remove); row.append(category, description, group, payer, date, total, share, status, actions); return row;
+    }));
+  }
+
+  function renderActivityPage(items) {
+    const list = $('[data-activity-list]');
+    if (!list) return;
+    list.replaceChildren(...items.map(item => {
+      const row = document.createElement('div'); row.className = 'timeline-row searchable'; row.dataset.activityType = item.type;
+      const icon = document.createElement('span'); icon.className = 'timeline-icon'; icon.innerHTML = `<svg><use href="#i-${item.type === 'payment' ? 'check' : item.type === 'group' ? 'users' : 'receipt'}"/></svg>`;
+      const copy = document.createElement('div'); copy.append(textElement('strong', item.title), textElement('p', item.meta));
+      const amount = textElement('strong', item.amount == null ? '' : euro.format(Number(item.amount)), Number(item.amount) >= 0 ? 'success' : 'danger');
+      const time = textElement('time', new Date(item.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+      row.append(icon, copy, amount, time); return row;
+    }));
+  }
+
+  function renderGroupPage(items) {
+    const list = $('[data-group-list]');
+    if (!list) return;
+    list.replaceChildren(...items.map((group, index) => {
+      const card = document.createElement('article'); card.className = 'group-card large searchable'; card.dataset.groupDetails = String(group.id); card.dataset.groupName = group.name; card.tabIndex = 0; card.setAttribute('role', 'button');
+      const cover = document.createElement('div'); cover.className = `group-cover cover-${index % 4 + 1}`; cover.append(textElement('span', (group.name || 'G').slice(0, 1).toUpperCase(), 'category-icon mint'));
+      const body = document.createElement('div'); body.className = 'group-body';
+      const head = document.createElement('div'); head.className = 'group-card-head'; const heading = document.createElement('div'); heading.append(textElement('h3', group.name), textElement('p', `${group.memberCount} participantes`)); head.append(heading);
+      const metrics = document.createElement('div'); metrics.className = 'group-metrics'; const spent = document.createElement('div'); spent.append(textElement('span', 'Gasto total'), textElement('strong', euro.format(Number(group.totalSpent)))); const budget = document.createElement('div'); budget.append(textElement('span', 'Presupuesto'), textElement('strong', euro.format(Number(group.budget || 0)))); metrics.append(spent, budget);
+      const footer = document.createElement('div'); footer.className = 'group-footer-actions'; const detail = document.createElement('button'); detail.type = 'button'; detail.className = 'text-button group-detail'; detail.dataset.group = group.name; detail.textContent = 'Ver gastos →'; footer.append(detail);
+      body.append(head, metrics, footer); card.append(cover, body); return card;
+    }));
+  }
+
+  async function loadPagedList(kind, page) {
+    const navigation = $(`[data-api-pagination="${kind}"]`);
+    if (!navigation) return;
+    paginationRequests.get(navigation)?.abort();
+    const controller = new AbortController(); paginationRequests.set(navigation, controller);
+    const params = new URLSearchParams({ page: String(Math.max(1, page)), per_page: '20' });
+    const search = $('#globalSearch')?.value.trim(); if (search) params.set('search', search);
+    let endpoint;
+    if (kind === 'expenses') {
+      $$('[data-expense-filter]', $('#view-expenses')).forEach(select => { if (select.value) params.set(select.dataset.expenseFilter, select.value); });
+      endpoint = `api/expenses/index.php?${params}`;
+    } else if (kind === 'activity') {
+      const type = $('[data-activity-filter]')?.value; if (type) params.set('type', type);
+      endpoint = `api/activity.php?${params}`;
+    } else {
+      endpoint = `api/groups/index.php?${params}`;
+    }
+    $$('button', navigation).forEach(button => { button.disabled = true; });
+    try {
+      const response = await fetch(endpoint, { signal: controller.signal });
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.data)) throw new Error(result.message || 'No se pudo cargar la página.');
+      if (kind === 'expenses') renderExpensePage(result.data);
+      if (kind === 'activity') renderActivityPage(result.data);
+      if (kind === 'groups') renderGroupPage(result.data);
+      navigation.dataset.page = String(result.pagination.page);
+      navigation.dataset.hasNext = result.pagination.has_next ? '1' : '0';
+      $('[data-page-label]', navigation).textContent = `Página ${result.pagination.page} de ${Math.max(1, result.pagination.total_pages)}`;
+      $('[data-page-previous]', navigation).disabled = !result.pagination.has_previous;
+      $('[data-page-next]', navigation).disabled = !result.pagination.has_next;
+    } catch (error) {
+      if (error.name !== 'AbortError') notify(error.message || 'No se pudo cargar la página.');
+    }
+  }
+
+  function initApiPagination() {
+    $$('[data-api-pagination]').forEach(navigation => navigation.addEventListener('click', event => {
+      const previous = event.target.closest('[data-page-previous]');
+      const next = event.target.closest('[data-page-next]');
+      const current = Number(navigation.dataset.page || 1);
+      if (previous) loadPagedList(navigation.dataset.apiPagination, current - 1);
+      if (next) loadPagedList(navigation.dataset.apiPagination, current + 1);
+    }));
   }
 
   async function postApi(endpoint, body) {
@@ -506,6 +663,11 @@
       });
     }
 
+    const notificationMore = event.target.closest('[data-notification-more]');
+    if (notificationMore) loadMoreNotifications(notificationMore);
+    const groupMembersMore = event.target.closest('[data-group-members-more]');
+    if (groupMembersMore) loadGroupMembers(groupMembersMore.dataset.groupId, Number(groupMembersMore.dataset.page || 1) + 1, true);
+
     const deleteButton = event.target.closest('.delete-row');
     if (deleteButton) {
       const row = deleteButton.closest('tr');
@@ -559,10 +721,10 @@
       }).catch(error => notify(error.message)).finally(() => { settlementButton.disabled = false; });
     }
     if (event.target.closest('.group-detail')) {
-      const groupName = event.target.closest('.group-detail').dataset.group.toLocaleLowerCase('es');
+      const groupId = event.target.closest('.group-card')?.dataset.groupDetails;
       navigate('expenses');
-      const groupFilter = $('[data-expense-filter="group"]', $('#view-expenses'));
-      if (groupFilter) { groupFilter.value = groupName; applyExpenseFilters($('#view-expenses')); }
+      const groupFilter = $('[data-expense-filter="group_id"]', $('#view-expenses'));
+      if (groupFilter && groupId) { groupFilter.value = groupId; loadPagedList('expenses', 1); }
     }
 
     const logoutButton = event.target.closest('.logout');
@@ -580,7 +742,14 @@
   $('#menuToggle').addEventListener('click', openSidebar);
   $('#mobileMoreToggle')?.addEventListener('click', openSidebar);
   overlay.addEventListener('click', closeSidebar);
-  $('#globalSearch').addEventListener('input', event => filterVisibleView(event.target.value));
+  $('#globalSearch').addEventListener('input', event => {
+    clearTimeout(event.currentTarget.searchTimer);
+    event.currentTarget.searchTimer = setTimeout(() => {
+      const active = $('.app-view.active')?.id?.replace('view-', '');
+      if (['expenses', 'activity', 'groups'].includes(active)) loadPagedList(active, 1);
+      else filterVisibleView(event.currentTarget.value);
+    }, 320);
+  });
   $('#expenseForm [name="group_id"]')?.addEventListener('change', event => updatePayerOptions(event.target.value, window.SplitlyData.currentUserId));
   $('#expenseForm [name="split_expense"]')?.addEventListener('change', updateSplitPreview);
   $('#notificationToggle')?.addEventListener('click', event => {
@@ -602,12 +771,10 @@
     if (event.target === confirmation || event.target.closest('[data-confirm-cancel]')) closeConfirmation(false);
     if (event.target.closest('[data-confirm-accept]')) closeConfirmation(true);
   });
-  $$('[data-expense-filter]').forEach(select => select.addEventListener('change', () => applyExpenseFilters(select.closest('.app-view'))));
+  $$('[data-expense-filter]').forEach(select => select.addEventListener('change', () => loadPagedList('expenses', 1)));
   $('[data-activity-filter]')?.addEventListener('change', event => {
     const value = event.target.value;
-    $$('.timeline-row', event.target.closest('.timeline')).forEach(row => {
-      row.classList.toggle('filter-hidden', Boolean(value) && row.dataset.activityType !== value);
-    });
+    loadPagedList('activity', 1);
   });
 
   $$('.chip').forEach(chip => chip.addEventListener('click', () => {
@@ -711,4 +878,5 @@
   if (initialView) navigate(initialView, false);
   initParticipantPickers();
   initExpenseChart();
+  initApiPagination();
 })();

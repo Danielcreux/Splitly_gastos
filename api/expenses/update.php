@@ -42,6 +42,12 @@ try {
         throw new DomainException('El usuario o pagador no pertenece al grupo.');
     }
 
+    $category = $db->prepare('SELECT id FROM categories WHERE id = :id AND is_active = 1 LIMIT 1');
+    $category->execute(['id' => $categoryId]);
+    if (!$category->fetchColumn()) {
+        throw new DomainException('La categoría no está disponible.');
+    }
+
     $db->prepare(
         "UPDATE expenses SET group_id = :group_id, category_id = :category_id,
            paid_by = :paid_by, description = :description, amount = :amount, split_method = :split_method,

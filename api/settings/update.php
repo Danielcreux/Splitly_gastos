@@ -11,6 +11,8 @@ $lastName = trim((string) ($data['last_name'] ?? ''));
 $email = filter_var(trim((string) ($data['email'] ?? '')), FILTER_VALIDATE_EMAIL);
 $currency = (string) ($data['currency'] ?? 'EUR');
 $locale = (string) ($data['locale'] ?? 'es-ES');
+$booleanValue = static fn(string $key): int => isset($data[$key])
+    && filter_var($data[$key], FILTER_VALIDATE_BOOL) ? 1 : 0;
 
 if ($firstName === '' || mb_strlen($firstName) > 80 || mb_strlen($lastName) > 120 || !$email) {
     respond(['ok' => false, 'message' => 'Revisa tus datos personales.'], 422);
@@ -39,10 +41,10 @@ try {
            notify_group_updates = VALUES(notify_group_updates)'
     )->execute([
         'user_id' => $userId,
-        'new_expense' => isset($data['notify_new_expense']) ? 1 : 0,
-        'payment' => isset($data['notify_payment']) ? 1 : 0,
-        'reminder' => isset($data['notify_payment_reminder']) ? 1 : 0,
-        'group_updates' => isset($data['notify_group_updates']) ? 1 : 0,
+        'new_expense' => $booleanValue('notify_new_expense'),
+        'payment' => $booleanValue('notify_payment'),
+        'reminder' => $booleanValue('notify_payment_reminder'),
+        'group_updates' => $booleanValue('notify_group_updates'),
     ]);
     $db->commit();
     $_SESSION['user_name'] = $firstName;

@@ -4,6 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../_bootstrap.php';
 requirePost();
 
+$bearer = bearerToken();
+if ($bearer !== null) {
+    $db = databaseOrFail();
+    $db->prepare('DELETE FROM user_sessions WHERE id = :id AND user_agent = :user_agent')
+        ->execute(['id' => hash('sha256', $bearer), 'user_agent' => SPLITLY_API_USER_AGENT]);
+    respond(['ok' => true, 'message' => 'Sesión cerrada.']);
+}
+
 try {
     forgetPersistentLogin(Database::connection());
 } catch (Throwable $exception) {

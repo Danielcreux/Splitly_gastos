@@ -1,6 +1,6 @@
 <section class="app-view" id="view-groups" data-title="Mis grupos" data-subtitle="Organiza tus gastos compartidos por grupos">
   <div class="view-toolbar"><div><strong><?= $summary['group_count'] ?> grupos</strong><span> en total</span></div><button class="button button-primary" data-open-modal="group"><svg><use href="#i-plus"/></svg>Crear grupo</button></div>
-  <div class="group-grid expanded">
+  <div class="group-grid expanded" data-group-list>
     <?php foreach ($groups as $index => $group): ?>
     <article class="group-card large searchable" data-search="<?= e(strtolower($group['name'])) ?>" data-group-details="<?= (int) $group['id'] ?>" data-group-name="<?= e($group['name']) ?>" role="button" tabindex="0" aria-label="Ver integrantes de <?= e($group['name']) ?>">
       <div class="group-cover cover-<?= $index + 1 ?>"><span class="category-icon <?= $group['tone'] ?>"><svg><use href="#i-<?= $group['icon'] ?>"/></svg></span></div>
@@ -11,4 +11,5 @@
     </article>
     <?php endforeach; ?>
   </div>
+  <nav class="api-pagination" data-api-pagination="groups" data-page="1" data-has-next="<?= $summary['group_count'] > count($groups) ? '1' : '0' ?>" aria-label="Paginación de grupos"><button type="button" class="button button-outline" data-page-previous disabled>Anterior</button><span data-page-label>Página 1</span><button type="button" class="button button-outline" data-page-next <?= $summary['group_count'] > count($groups) ? '' : 'disabled' ?>>Siguiente</button></nav>
 </section>

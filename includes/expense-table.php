@@ -1,7 +1,8 @@
 <div class="section-title table-title"><h2><?= $tableTitle ?></h2><div class="filters">
-  <select data-expense-filter="group"><option value="">Todos los grupos</option><?php foreach (array_unique(array_column($expenses, 'group')) as $option): ?><option value="<?= e(mb_strtolower($option)) ?>"><?= e($option) ?></option><?php endforeach; ?></select>
-  <select data-expense-filter="category"><option value="">Todas las categorías</option><?php foreach (array_unique(array_column($expenses, 'category')) as $option): ?><option value="<?= e(mb_strtolower($option)) ?>"><?= e($option) ?></option><?php endforeach; ?></select>
-  <select data-expense-filter="status"><option value="">Todos los estados</option><?php foreach (array_unique(array_column($expenses, 'status')) as $option): ?><option value="<?= e(mb_strtolower($option)) ?>"><?= e($option) ?></option><?php endforeach; ?></select>
+  <select data-expense-filter="group_id"><option value="">Todos los grupos</option><?php foreach ($groups as $option): ?><option value="<?= (int) $option['id'] ?>"><?= e($option['name']) ?></option><?php endforeach; ?></select>
+  <?php $expenseCategories = []; foreach ($expenses as $option) $expenseCategories[(int) $option['category_id']] = $option['category']; ?>
+  <select data-expense-filter="category_id"><option value="">Todas las categorías</option><?php foreach ($expenseCategories as $id => $name): ?><option value="<?= $id ?>"><?= e($name) ?></option><?php endforeach; ?></select>
+  <select data-expense-filter="status"><option value="">Todos los estados</option><option value="settled">Liquidado</option><option value="paid">Pagado</option><option value="pending">Pendiente</option></select>
 </div></div>
 <div class="table-panel">
   <table class="expense-table">
@@ -20,4 +21,9 @@
     </tbody>
   </table>
   <div class="empty-search"><span>⌕</span><strong>Sin resultados</strong><p>Prueba con otra búsqueda.</p></div>
+  <nav class="api-pagination" data-api-pagination="expenses" data-page="1" data-has-next="<?= $summary['expense_count'] > count($expenses) ? '1' : '0' ?>" aria-label="Paginación de gastos">
+    <button type="button" class="button button-outline" data-page-previous disabled>Anterior</button>
+    <span data-page-label>Página 1</span>
+    <button type="button" class="button button-outline" data-page-next <?= $summary['expense_count'] > count($expenses) ? '' : 'disabled' ?>>Siguiente</button>
+  </nav>
 </div>

@@ -8,6 +8,7 @@
 *.zip
 *.sql.gz
 database/
+tests/
 
 /auth-preview.png
 /*-preview.png
@@ -16,3 +17,7 @@ database/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# .NET MAUI build output
+Splitly-movil/bin/
+Splitly-movil/obj/
