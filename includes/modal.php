@@ -11,7 +11,7 @@
       <label><span>Categoría</span><select name="category_id"><option value="1">Compras</option><option value="2">Alimentación</option><option value="3">Restaurante</option><option value="4">Transporte</option><option value="5">Servicios</option><option value="8">Otros</option></select></label>
       <label class="full-width"><span>Pagado por</span><select name="payer_id" required></select></label>
       <div class="split-preview full-width"><span data-split-label>Dividir a partes iguales</span><strong class="split-member-count">Participantes del grupo</strong><label class="switch"><input type="checkbox" name="split_expense" value="1" checked aria-label="Dividir el gasto entre los integrantes"><span></span></label></div>
-      <div class="modal-actions full-width"><button type="button" class="button button-outline" data-close-modal>Cancelar</button><button class="button button-primary">Guardar gasto</button></div>
+      <div class="modal-actions full-width"><button type="button" class="button button-outline" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar gasto</button></div>
     </form>
 
     <form id="groupForm" class="modal-form hidden">

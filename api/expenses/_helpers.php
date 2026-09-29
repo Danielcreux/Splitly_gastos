@@ -20,6 +20,7 @@ function expensePayload(array $row): array
         'date' => $row['expense_date'],
         'notes' => ($row['notes'] ?? null) ?: null,
         'splitMethod' => $row['split_method'],
+        'splitCount' => (int) ($row['split_count'] ?? 0),
         'yourShare' => (float) ($row['your_share'] ?? 0),
         'status' => $row['expense_status'] ?? null,
     ];

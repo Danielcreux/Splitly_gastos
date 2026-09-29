@@ -77,7 +77,9 @@ final class SplitlyRepository
     public function expensesForUser(int $userId, int $limit = 20): array
     {
         $statement = $this->db->prepare(
-            "SELECT e.id, e.group_id, e.category_id, e.paid_by, e.split_method, c.name AS category,
+            "SELECT e.id, e.group_id, e.category_id, e.paid_by, e.split_method,
+                    (SELECT COUNT(*) FROM expense_splits all_splits WHERE all_splits.expense_id = e.id) AS split_count,
+                    c.name AS category,
                     e.description, g.name AS `group`,
                     CONCAT(u.first_name, ' ', COALESCE(u.last_name, '')) AS person,
                     DATE_FORMAT(e.expense_date, '%d/%m/%Y') AS date,
@@ -224,18 +226,28 @@ final class SplitlyRepository
                     COALESCE(SUM(CASE WHEN e.expense_date >= DATE_FORMAT(CURRENT_DATE(),'%Y-%m-01')
                                       AND e.expense_date < DATE_ADD(DATE_FORMAT(CURRENT_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH)
                                 THEN es.amount_owed ELSE 0 END),0) AS month_spent,
-                    COUNT(*) AS expense_count
+                    COUNT(*) AS split_count
              FROM expense_splits es INNER JOIN expenses e ON e.id=es.expense_id AND e.status='active'
              WHERE es.user_id=:user_id"
         );
         $statement->execute(['user_id' => $userId]);
         $summary = $statement->fetch() ?: [];
+        // El historial muestra todos los gastos de los grupos del usuario, no solo
+        // aquellos que tienen una fila en expense_splits para él.
+        $expenses = $this->db->prepare(
+            "SELECT COUNT(*)
+             FROM expenses e
+             INNER JOIN group_members gm ON gm.group_id=e.group_id
+                AND gm.user_id=:user_id AND gm.status='active'
+             WHERE e.status='active'"
+        );
+        $expenses->execute(['user_id' => $userId]);
         $groups = $this->db->prepare("SELECT COUNT(*) FROM group_members WHERE user_id=:user_id AND status='active'");
         $groups->execute(['user_id' => $userId]);
         return [
             'total_spent' => (float) ($summary['total_spent'] ?? 0),
             'month_spent' => (float) ($summary['month_spent'] ?? 0),
-            'expense_count' => (int) ($summary['expense_count'] ?? 0),
+            'expense_count' => (int) $expenses->fetchColumn(),
             'group_count' => (int) $groups->fetchColumn(),
         ];
     }

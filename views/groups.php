@@ -11,5 +11,6 @@
     </article>
     <?php endforeach; ?>
   </div>
-  <nav class="api-pagination" data-api-pagination="groups" data-page="1" data-has-next="<?= $summary['group_count'] > count($groups) ? '1' : '0' ?>" aria-label="Paginación de grupos"><button type="button" class="button button-outline" data-page-previous disabled>Anterior</button><span data-page-label>Página 1</span><button type="button" class="button button-outline" data-page-next <?= $summary['group_count'] > count($groups) ? '' : 'disabled' ?>>Siguiente</button></nav>
+  <?php $groupTotalPages = max(1, (int) ceil($summary['group_count'] / 20)); ?>
+  <nav class="api-pagination" data-api-pagination="groups" data-page="1" data-total-pages="<?= $groupTotalPages ?>" data-has-previous="0" data-has-next="<?= $groupTotalPages > 1 ? '1' : '0' ?>" aria-label="Paginación de grupos"><button type="button" class="button pagination-button" data-page-previous disabled aria-label="Ir a la página anterior"><span aria-hidden="true">&larr;</span><span>Anterior</span></button><span class="pagination-status" data-page-label aria-live="polite">Página 1 de <?= $groupTotalPages ?></span><button type="button" class="button pagination-button" data-page-next <?= $groupTotalPages > 1 ? '' : 'disabled' ?> aria-label="Ir a la página siguiente"><span>Siguiente</span><span aria-hidden="true">&rarr;</span></button></nav>
 </section>

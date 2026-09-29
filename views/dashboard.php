@@ -29,5 +29,5 @@
     <?php endforeach; ?>
     <button class="new-group-card" data-open-modal="group"><span><svg><use href="#i-plus"/></svg></span>Crear nuevo<br>grupo</button>
   </div>
-  <?php $tableTitle = 'Gastos recientes'; $tableLimit = 5; require __DIR__ . '/../includes/expense-table.php'; ?>
+  <?php $tableTitle = 'Gastos recientes'; $tableLimit = 5; $showTableControls = false; require __DIR__ . '/../includes/expense-table.php'; ?>
 </section>

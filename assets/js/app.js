@@ -9,6 +9,7 @@
   const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
   const sidebar = $('#sidebar');
   const overlay = $('#sidebarOverlay');
+  const mainContent = $('.main-content');
   const modal = $('#modalBackdrop');
   const confirmation = $('#confirmationBackdrop');
   const toast = $('#toast');
@@ -17,8 +18,12 @@
   let confirmationTrigger = null;
 
   function syncBodyScrollLock() {
-    const locked = sidebar?.classList.contains('open') || modal?.classList.contains('open') || confirmation?.classList.contains('open');
-    document.body.style.overflow = locked ? 'hidden' : '';
+    const mobileSidebarOpen = window.matchMedia('(max-width: 860px)').matches && sidebar?.classList.contains('open');
+    const locked = mobileSidebarOpen || modal?.classList.contains('open') || confirmation?.classList.contains('open');
+    document.documentElement.classList.toggle('scroll-locked', Boolean(locked));
+    document.body.classList.toggle('scroll-locked', Boolean(locked));
+    // Limpia el bloqueo inline usado por versiones anteriores y restaurado por el navegador.
+    document.body.style.removeProperty('overflow');
   }
 
   function requestConfirmation({ title, message, confirmLabel = 'Confirmar' }, trigger = null) {
@@ -71,9 +76,14 @@
     const enabled = form.elements.split_expense.checked;
     const groupId = form.elements.group_id.value;
     const members = window.SplitlyData?.groupMembers?.[String(groupId)] || [];
-    $('[data-split-label]', form).textContent = enabled ? 'Dividir a partes iguales' : 'No dividir este gasto';
+    const canSplit = members.length >= 2;
+    $('[data-split-label]', form).textContent = enabled && !canSplit
+      ? 'No se puede dividir todavía'
+      : enabled ? 'Dividir a partes iguales' : 'No dividir este gasto';
     $('.split-member-count', form).textContent = enabled
-      ? `${members.length} ${members.length === 1 ? 'participante' : 'participantes'}`
+      ? canSplit
+        ? `${members.length} participantes activos`
+        : 'Añade al menos otro participante activo'
       : 'Solo se asignará al pagador';
   }
 
@@ -90,7 +100,7 @@
     document.title = `${view.dataset.title.replace(' 👋', '')} · Splitly`;
     if (updateHash) history.replaceState(null, '', `#${viewName}`);
     closeSidebar();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    mainContent?.scrollTo({ top: 0, behavior: 'smooth' });
     filterVisibleView($('#globalSearch').value);
   }
 
@@ -279,13 +289,23 @@
         category_id: expense.categoryId, payer_id: expense.paidById,
         split_expense: expense.splitMethod === 'equal'
       });
-      const category = document.createElement('td'); category.dataset.label = 'Categoría'; category.append(textElement('span', expense.categoryName));
+      const category = document.createElement('td'); category.dataset.label = 'Categoría';
+      const categoryIcon = document.createElement('span'); categoryIcon.className = 'category-icon small';
+      const iconName = /^[a-z0-9-]+$/i.test(expense.categoryIcon || '') ? expense.categoryIcon : 'receipt';
+      categoryIcon.innerHTML = `<svg aria-hidden="true"><use href="#i-${iconName}"/></svg>`;
+      category.append(categoryIcon, textElement('span', expense.categoryName, 'mobile-only'));
       const description = document.createElement('td'); description.dataset.label = 'Descripción'; description.append(textElement('strong', expense.concept));
       const group = textElement('td', expense.groupName); group.dataset.label = 'Grupo';
       const payer = textElement('td', expense.paidByName); payer.dataset.label = 'Pagado por';
       const date = textElement('td', new Date(expense.date).toLocaleDateString('es-ES')); date.dataset.label = 'Fecha';
       const total = textElement('td', euro.format(Number(expense.amount))); total.dataset.label = 'Total';
-      const share = textElement('td', euro.format(Number(expense.yourShare))); share.dataset.label = 'Tu parte';
+      const share = document.createElement('td'); share.dataset.label = 'Tu parte';
+      const shareCopy = document.createElement('span'); shareCopy.className = 'expense-share';
+      shareCopy.append(
+        textElement('strong', euro.format(Number(expense.yourShare))),
+        textElement('small', Number(expense.splitCount) > 1 ? `Dividido entre ${expense.splitCount} participantes` : 'Sin dividir')
+      );
+      share.append(shareCopy);
       const status = document.createElement('td'); status.dataset.label = 'Estado'; status.append(textElement('span', expense.status || 'Pendiente', `status ${(expense.status || 'Pendiente').toLocaleLowerCase('es')}`));
       const actions = document.createElement('td'); actions.className = 'row-actions';
       const edit = document.createElement('button'); edit.type = 'button'; edit.title = 'Editar'; edit.className = 'edit-expense'; edit.innerHTML = '<svg><use href="#i-edit"/></svg>';
@@ -321,9 +341,10 @@
     }));
   }
 
-  async function loadPagedList(kind, page) {
-    const navigation = $(`[data-api-pagination="${kind}"]`);
+  async function loadPagedList(kind, page, sourceNavigation = null) {
+    const navigation = sourceNavigation || $(`#view-${kind} [data-api-pagination="${kind}"]`);
     if (!navigation) return;
+    if (navigation.dataset.loading === '1') return;
     paginationRequests.get(navigation)?.abort();
     const controller = new AbortController(); paginationRequests.set(navigation, controller);
     const params = new URLSearchParams({ page: String(Math.max(1, page)), per_page: '20' });
@@ -338,6 +359,8 @@
     } else {
       endpoint = `api/groups/index.php?${params}`;
     }
+    navigation.dataset.loading = '1';
+    navigation.setAttribute('aria-busy', 'true');
     $$('button', navigation).forEach(button => { button.disabled = true; });
     try {
       const response = await fetch(endpoint, { signal: controller.signal });
@@ -348,11 +371,20 @@
       if (kind === 'groups') renderGroupPage(result.data);
       navigation.dataset.page = String(result.pagination.page);
       navigation.dataset.hasNext = result.pagination.has_next ? '1' : '0';
+      navigation.dataset.hasPrevious = result.pagination.has_previous ? '1' : '0';
+      navigation.dataset.totalPages = String(Math.max(1, result.pagination.total_pages));
       $('[data-page-label]', navigation).textContent = `Página ${result.pagination.page} de ${Math.max(1, result.pagination.total_pages)}`;
       $('[data-page-previous]', navigation).disabled = !result.pagination.has_previous;
       $('[data-page-next]', navigation).disabled = !result.pagination.has_next;
+      navigation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (error) {
       if (error.name !== 'AbortError') notify(error.message || 'No se pudo cargar la página.');
+    }
+    if (paginationRequests.get(navigation) === controller) {
+      navigation.dataset.loading = '0';
+      navigation.removeAttribute('aria-busy');
+      $('[data-page-previous]', navigation).disabled = navigation.dataset.hasPrevious !== '1';
+      $('[data-page-next]', navigation).disabled = navigation.dataset.hasNext !== '1';
     }
   }
 
@@ -360,9 +392,11 @@
     $$('[data-api-pagination]').forEach(navigation => navigation.addEventListener('click', event => {
       const previous = event.target.closest('[data-page-previous]');
       const next = event.target.closest('[data-page-next]');
+      if ((!previous && !next) || event.target.closest('button')?.disabled) return;
+      event.preventDefault();
       const current = Number(navigation.dataset.page || 1);
-      if (previous) loadPagedList(navigation.dataset.apiPagination, current - 1);
-      if (next) loadPagedList(navigation.dataset.apiPagination, current + 1);
+      if (previous && current > 1) loadPagedList(navigation.dataset.apiPagination, current - 1, navigation);
+      if (next && navigation.dataset.hasNext === '1') loadPagedList(navigation.dataset.apiPagination, current + 1, navigation);
     }));
   }
 
@@ -609,11 +643,20 @@
   async function submitToApi(form, endpoint) {
     const submitButton = $('button[type="submit"], button:not([type])', form);
     const originalText = submitButton.textContent;
+    const isExpenseForm = form.id === 'expenseForm';
+    const splitRequested = isExpenseForm && form.elements.split_expense.checked;
+    const payload = new FormData(form);
+    // Los checkboxes desmarcados no forman parte de FormData. Enviamos siempre
+    // un valor inequívoco para que web y clientes JSON usen el mismo contrato.
+    if (isExpenseForm) payload.set('split_expense', splitRequested ? '1' : '0');
     submitButton.disabled = true;
     submitButton.textContent = 'Guardando…';
 
     try {
-      const result = await postApi(endpoint, new FormData(form));
+      const result = await postApi(endpoint, payload);
+      if (splitRequested && Number(result.splitCount) < 2) {
+        throw new Error('El servidor no confirmó la división del gasto. Recarga la página e inténtalo de nuevo.');
+      }
 
       closeModal();
       notify(result.message);
@@ -790,6 +833,12 @@
 
   $('#expenseForm')?.addEventListener('submit', event => {
     event.preventDefault();
+    const form = event.currentTarget;
+    const members = window.SplitlyData?.groupMembers?.[String(form.elements.group_id.value)] || [];
+    if (form.elements.split_expense.checked && members.length < 2) {
+      notify('Para dividir el gasto, el grupo debe tener al menos dos participantes activos.');
+      return;
+    }
     submitToApi(event.currentTarget, event.currentTarget.dataset.endpoint || 'api/expenses/create.php');
   });
   $('#groupForm')?.addEventListener('submit', event => {
@@ -868,15 +917,45 @@
       event.preventDefault();
       openGroupDetails(event.target.dataset.groupDetails, event.target.dataset.groupName);
     }
+    const editable = event.target.matches('input,select,textarea,[contenteditable="true"]');
+    const scrollKeys = ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End'];
+    if (!editable && scrollKeys.includes(event.key) && !document.documentElement.classList.contains('scroll-locked')) {
+      const page = Math.max(240, mainContent.clientHeight * 0.82);
+      const positions = {
+        ArrowDown: mainContent.scrollTop + 48,
+        ArrowUp: mainContent.scrollTop - 48,
+        PageDown: mainContent.scrollTop + page,
+        PageUp: mainContent.scrollTop - page,
+        Home: 0,
+        End: mainContent.scrollHeight
+      };
+      event.preventDefault();
+      mainContent.scrollTo({ top: positions[event.key], behavior: 'auto' });
+    }
   });
+
+  // Normaliza la rueda/trackpad sobre toda la aplicación, incluso si el foco
+  // permanece en un botón o en la cabecera fija.
+  document.addEventListener('wheel', event => {
+    if (event.ctrlKey || !mainContent || document.documentElement.classList.contains('scroll-locked')) return;
+    if (event.target.closest?.('.modal,.notification-panel.open,.sidebar.open')) return;
+    if (Math.abs(event.deltaY) < Math.abs(event.deltaX) || event.deltaY === 0) return;
+    const multiplier = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 18
+      : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? mainContent.clientHeight : 1;
+    event.preventDefault();
+    mainContent.scrollBy({ top: event.deltaY * multiplier, behavior: 'auto' });
+  }, { passive: false });
 
   window.addEventListener('resize', () => {
     if (window.innerWidth > 860) closeSidebar();
+    else syncBodyScrollLock();
   }, { passive: true });
+  window.addEventListener('pageshow', syncBodyScrollLock, { passive: true });
 
   const initialView = location.hash.slice(1);
   if (initialView) navigate(initialView, false);
   initParticipantPickers();
   initExpenseChart();
   initApiPagination();
+  syncBodyScrollLock();
 })();

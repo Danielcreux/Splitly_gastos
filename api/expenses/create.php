@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../_bootstrap.php';
+require_once __DIR__ . '/../../src/ExpenseSplitter.php';
 requirePost();
 
 $data = requestData();
@@ -12,7 +13,7 @@ $date = (string) ($data['date'] ?? '');
 $groupId = filter_var($data['group_id'] ?? null, FILTER_VALIDATE_INT);
 $categoryId = filter_var($data['category_id'] ?? null, FILTER_VALIDATE_INT);
 $payerId = filter_var($data['payer_id'] ?? $userId, FILTER_VALIDATE_INT);
-$splitExpense = isset($data['split_expense']) && in_array((string) $data['split_expense'], ['1', 'true', 'on'], true);
+$splitExpense = ExpenseSplitter::isRequested($data['split_expense'] ?? false);
 
 $validDate = DateTimeImmutable::createFromFormat('Y-m-d', $date);
 if ($description === '' || mb_strlen($description) > 180) {
@@ -34,7 +35,8 @@ try {
 
     $membership = $db->prepare(
         "SELECT gm.user_id FROM group_members gm
-         WHERE gm.group_id = :group_id AND gm.status = 'active'"
+         WHERE gm.group_id = :group_id AND gm.status = 'active'
+         ORDER BY gm.joined_at, gm.user_id"
     );
     $membership->execute(['group_id' => $groupId]);
     $memberIds = array_map('intval', array_column($membership->fetchAll(), 'user_id'));
@@ -66,22 +68,17 @@ try {
     ]);
     $expenseId = (int) $db->lastInsertId();
 
-    // Trabajamos en céntimos para que la suma de repartos sea siempre exacta.
-    $totalCents = (int) round((float) $amount * 100);
-    $splitMemberIds = $splitExpense ? $memberIds : [(int) $payerId];
-    $baseCents = intdiv($totalCents, count($splitMemberIds));
-    $remainder = $totalCents % count($splitMemberIds);
+    $splitRows = ExpenseSplitter::distribute((float) $amount, $memberIds, (int) $payerId, $splitExpense);
     $split = $db->prepare(
         "INSERT INTO expense_splits (expense_id, user_id, amount_owed, is_settled)
          VALUES (:expense_id, :user_id, :amount_owed, :is_settled)"
     );
-    foreach ($splitMemberIds as $index => $memberId) {
-        $memberCents = $baseCents + ($index < $remainder ? 1 : 0);
+    foreach ($splitRows as $splitRow) {
         $split->execute([
             'expense_id' => $expenseId,
-            'user_id' => $memberId,
-            'amount_owed' => number_format($memberCents / 100, 2, '.', ''),
-            'is_settled' => $memberId === (int) $payerId ? 1 : 0,
+            'user_id' => $splitRow['user_id'],
+            'amount_owed' => $splitRow['amount_owed'],
+            'is_settled' => $splitRow['is_settled'],
         ]);
     }
 
@@ -116,7 +113,18 @@ try {
     }
 
     $db->commit();
-    respond(['ok' => true, 'message' => 'Gasto guardado correctamente.', 'id' => $expenseId], 201);
+    respond([
+        'ok' => true,
+        'message' => 'Gasto guardado correctamente.',
+        'id' => $expenseId,
+        'splitMethod' => $splitExpense ? 'equal' : 'exact',
+        'splitCount' => count($splitRows),
+    ], 201);
+} catch (ExpenseSplitException $exception) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    respond(['ok' => false, 'message' => $exception->getMessage()], 422);
 } catch (DomainException $exception) {
     if ($db->inTransaction()) {
         $db->rollBack();

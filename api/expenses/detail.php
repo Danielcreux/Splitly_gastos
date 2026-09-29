@@ -9,5 +9,6 @@ $statement->execute(['user_id'=>$userId,'share_user'=>$userId,'id'=>$expenseId])
 if(!$expense) respond(['ok'=>false,'error'=>'not_found','message'=>'El gasto no existe o no tienes acceso.'],404);
 $splits=$db->prepare("SELECT s.user_id,TRIM(CONCAT(u.first_name,' ',COALESCE(u.last_name,''))) AS user_name,s.amount_owed,s.percentage FROM expense_splits s INNER JOIN users u ON u.id=s.user_id WHERE s.expense_id=:id ORDER BY u.first_name,u.id"); $splits->execute(['id'=>$expenseId]);
 $payload=expensePayload($expense); $payload['splits']=array_map(static fn($s)=>['userId'=>(int)$s['user_id'],'userName'=>$s['user_name'],'amount'=>(float)$s['amount_owed'],'percentage'=>$s['percentage']===null?null:(float)$s['percentage']],$splits->fetchAll());
+$payload['splitCount']=count($payload['splits']);
 $payload['canEdit']=(int)$expense['created_by']===$userId||in_array($expense['role'],['owner','admin'],true); $payload['canDelete']=$payload['canEdit'];
 respond(['ok'=>true,'expense'=>$payload]);

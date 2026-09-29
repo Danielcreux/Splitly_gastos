@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../_bootstrap.php';
+require_once __DIR__ . '/../../src/ExpenseSplitter.php';
 requirePost();
 
 $data = requestData();
@@ -13,7 +14,7 @@ $payerId = filter_var($data['payer_id'] ?? null, FILTER_VALIDATE_INT);
 $amount = parseLocalizedDecimal($data['amount'] ?? null);
 $description = trim((string) ($data['description'] ?? ''));
 $date = (string) ($data['date'] ?? '');
-$splitExpense = isset($data['split_expense']) && in_array((string) $data['split_expense'], ['1', 'true', 'on'], true);
+$splitExpense = ExpenseSplitter::isRequested($data['split_expense'] ?? false);
 $validDate = DateTimeImmutable::createFromFormat('Y-m-d', $date);
 
 if (!$expenseId || !$groupId || !$categoryId || !$payerId || $amount === false || $amount <= 0 || $description === '' || mb_strlen($description) > 180 || !$validDate || $validDate->format('Y-m-d') !== $date) {
@@ -59,18 +60,14 @@ try {
         'expense_date' => $date, 'split_method' => $splitExpense ? 'equal' : 'exact', 'expense_id' => $expenseId,
     ]);
 
+    $splitRows = ExpenseSplitter::distribute((float) $amount, $memberIds, (int) $payerId, $splitExpense);
     $db->prepare('DELETE FROM expense_splits WHERE expense_id = :expense_id')->execute(['expense_id' => $expenseId]);
-    $totalCents = (int) round((float) $amount * 100);
-    $splitMemberIds = $splitExpense ? $memberIds : [(int) $payerId];
-    $baseCents = intdiv($totalCents, count($splitMemberIds));
-    $remainder = $totalCents % count($splitMemberIds);
     $split = $db->prepare('INSERT INTO expense_splits (expense_id, user_id, amount_owed, is_settled) VALUES (:expense_id, :user_id, :amount_owed, :is_settled)');
-    foreach ($splitMemberIds as $index => $memberId) {
-        $cents = $baseCents + ($index < $remainder ? 1 : 0);
+    foreach ($splitRows as $splitRow) {
         $split->execute([
-            'expense_id' => $expenseId, 'user_id' => $memberId,
-            'amount_owed' => number_format($cents / 100, 2, '.', ''),
-            'is_settled' => $memberId === (int) $payerId ? 1 : 0,
+            'expense_id' => $expenseId, 'user_id' => $splitRow['user_id'],
+            'amount_owed' => $splitRow['amount_owed'],
+            'is_settled' => $splitRow['is_settled'],
         ]);
     }
     $db->prepare(
@@ -78,7 +75,16 @@ try {
          VALUES (:group_id, :actor_id, 'expense.updated', 'expense', :entity_id, :message)"
     )->execute(['group_id' => $groupId, 'actor_id' => $userId, 'entity_id' => $expenseId, 'message' => "Se actualizó {$description}"]);
     $db->commit();
-    respond(['ok' => true, 'message' => 'Gasto actualizado correctamente.']);
+    respond([
+        'ok' => true,
+        'message' => 'Gasto actualizado correctamente.',
+        'id' => (int) $expenseId,
+        'splitMethod' => $splitExpense ? 'equal' : 'exact',
+        'splitCount' => count($splitRows),
+    ]);
+} catch (ExpenseSplitException $exception) {
+    if ($db->inTransaction()) $db->rollBack();
+    respond(['ok' => false, 'message' => $exception->getMessage()], 422);
 } catch (DomainException $exception) {
     if ($db->inTransaction()) $db->rollBack();
     respond(['ok' => false, 'message' => $exception->getMessage()], 403);

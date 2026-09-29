@@ -63,6 +63,7 @@ $total = (int) $count->fetchColumn();
 
 $statement = $db->prepare(
     "SELECT e.id,e.description,e.amount,e.notes,e.group_id,e.category_id,e.paid_by,e.expense_date,e.split_method,
+            (SELECT COUNT(*) FROM expense_splits all_splits WHERE all_splits.expense_id=e.id) AS split_count,
             g.name AS group_name,c.name AS category,c.icon AS category_icon,c.color AS category_color,
             TRIM(CONCAT(u.first_name,' ',COALESCE(u.last_name,''))) AS paid_by_name,
             COALESCE(es.amount_owed,0) AS your_share,
