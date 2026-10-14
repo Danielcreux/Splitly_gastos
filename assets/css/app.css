@@ -242,3 +242,82 @@ html,body{height:100%;overflow:hidden}
 
 .expense-share{display:flex;flex-direction:column;gap:1px}
 .expense-share small{color:var(--muted);font-size:.58rem;font-weight:500}
+
+/* Sistema de pop-ups Splitly: mismo lenguaje visual que la app móvil. */
+.modal-backdrop,.confirmation-backdrop{background:rgba(3,31,23,.66);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.modal{position:relative;width:min(590px,100%);border:1px solid rgba(255,255,255,.72);border-radius:24px;background:linear-gradient(180deg,#fff 0%,#fbfdfc 100%);box-shadow:0 32px 90px rgba(3,37,27,.32),0 2px 8px rgba(3,37,27,.08);overflow-x:hidden;overflow-y:auto}
+.modal-drag-handle{display:none}
+.modal-head{display:grid;grid-template-columns:52px minmax(0,1fr) 40px;align-items:center;gap:14px;padding:23px 24px 20px;border-bottom:1px solid #e6eeeb;background:linear-gradient(135deg,#f5fcf9 0%,#edf8f4 100%)}
+.modal-heading-icon{width:52px;height:52px;display:grid;place-items:center;border:1px solid #cbe8dd;border-radius:16px;background:#dff4ec;color:var(--green-800);box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.modal-heading-icon svg{width:24px;height:24px;stroke-width:2}
+.modal-heading-copy{min-width:0}
+.modal-head h2{font-size:1.18rem;line-height:1.25;letter-spacing:-.025em;color:var(--green-950)}
+.modal-head p{margin-top:5px;font-size:.73rem;line-height:1.45;color:#61726c}
+.modal-close{width:40px;height:40px;border:1px solid #d8e5e0;border-radius:12px;background:rgba(255,255,255,.8);color:#53645e}
+.modal-close:hover{border-color:#b9d9cd;background:#fff;color:var(--green-900)}
+.modal-form{padding:24px;gap:17px}
+.modal-form label>span{font-size:.73rem;color:#34463f}
+.modal-form input,.modal-form select{height:46px;border:1px solid #d5e1dd;border-radius:12px;background:#fff;color:var(--ink);font-size:.8rem;transition:border-color .18s,box-shadow .18s,background .18s}
+.modal-form input:hover,.modal-form select:hover{border-color:#b6cfc6}
+.modal-form input:focus,.modal-form select:focus{border-color:var(--green-500);background:#fff;box-shadow:0 0 0 4px rgba(33,180,134,.12)}
+.modal-form input::placeholder{color:#95a39e}
+.input-suffix b{top:14px;color:#61726c}
+.split-preview{min-height:58px;padding:13px 15px;border:1px solid #cfe9df;border-radius:14px;background:linear-gradient(135deg,#edf9f5,#e3f5ee)}
+.modal-actions{gap:10px;margin-top:8px;padding-top:5px}
+.modal-actions .button{min-height:45px;border-radius:12px;padding-inline:18px}
+
+.confirmation-dialog{width:min(440px,100%);padding:30px;border:1px solid rgba(255,255,255,.78);border-radius:24px;background:linear-gradient(180deg,#fff,#fbfdfc);box-shadow:0 32px 90px rgba(3,37,27,.34);transform:translateY(16px) scale(.97)}
+.confirmation-icon{width:60px;height:60px;margin-bottom:18px;border-radius:19px;transition:color .2s,background .2s,border-color .2s}
+.confirmation-icon svg{width:27px;height:27px;stroke-width:2}
+.confirmation-dialog[data-tone="primary"] .confirmation-icon{border:1px solid #c5e7da;background:#dff5ed;color:var(--green-800)}
+.confirmation-dialog[data-tone="danger"] .confirmation-icon{border:1px solid #f3cfd2;background:#fff0f1;color:#b83e46}
+.confirmation-dialog h2{font-size:1.2rem;letter-spacing:-.025em;color:var(--green-950)}
+.confirmation-dialog p{max-width:350px;margin:10px auto 25px;font-size:.78rem;line-height:1.65;color:#64736e}
+.confirmation-actions{gap:10px}
+.confirmation-actions .button{min-height:46px;border-radius:12px;font-weight:700}
+.confirmation-accept{border:1px solid transparent;color:#fff;transition:background .18s,box-shadow .18s,transform .18s}
+.confirmation-dialog[data-tone="primary"] .confirmation-accept{background:linear-gradient(135deg,var(--green-600),var(--green-900));box-shadow:0 7px 18px rgba(7,112,82,.23)}
+.confirmation-dialog[data-tone="danger"] .confirmation-accept{background:linear-gradient(135deg,#d95860,#b53640);box-shadow:0 7px 18px rgba(181,54,64,.23)}
+.confirmation-accept:hover{transform:translateY(-1px);filter:brightness(.96)}
+.confirmation-accept:focus-visible{outline:3px solid rgba(33,180,134,.22);outline-offset:2px}
+.confirmation-dialog[data-tone="danger"] .confirmation-accept:focus-visible{outline-color:rgba(201,71,78,.24)}
+
+.notification-panel{top:52px;width:360px;padding:10px;border:1px solid rgba(7,90,69,.12);border-radius:20px;background:rgba(255,255,255,.98);box-shadow:0 24px 70px rgba(4,50,36,.2);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transform:translateY(-9px) scale(.98);transform-origin:top right}
+.notification-head{align-items:center;padding:11px 12px 14px;border-bottom:1px solid #ebf1ef;margin-bottom:5px}
+.notification-head strong{font-size:.88rem;letter-spacing:-.01em;color:var(--green-950)}
+.notification-head small{padding:4px 8px;border-radius:999px;background:var(--green-50);color:var(--green-800);font-size:.62rem;font-weight:700}
+.notification-item{gap:11px;min-height:58px;padding:11px 12px;border-radius:13px;background:transparent;transition:background .18s,transform .18s}
+.notification-item:hover{background:#eef8f4;transform:translateX(2px)}
+.notification-item>i{flex:0 0 auto;width:9px;height:9px;margin-top:5px;border:2px solid #fff;box-shadow:0 0 0 1px #cdd9d5}
+.notification-item.unread>i{box-shadow:0 0 0 3px rgba(33,180,134,.13)}
+.notification-item>span{min-width:0;gap:4px}
+.notification-item strong{font-size:.74rem;color:#24362f}
+.notification-item small{font-size:.66rem;line-height:1.45;color:#6d7b76}
+.notification-panel>.text-button{width:100%;min-height:38px;margin-top:5px;border-radius:11px;background:#f1f8f5;color:var(--green-800);font-weight:700}
+.notification-empty{margin:0;padding:25px 18px;border-radius:13px;background:#f7faf9}
+
+.toast{min-height:48px;max-width:min(390px,calc(100vw - 32px));padding:13px 17px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:linear-gradient(135deg,#087054,#054d3a);box-shadow:0 16px 40px rgba(4,55,40,.28);font-size:.76rem;font-weight:600}
+.toast svg{flex:0 0 auto;width:19px;height:19px}
+
+@media(max-width:650px){
+  .modal-backdrop{align-items:end;padding:0}
+  .modal{width:100%;max-height:calc(94dvh - env(safe-area-inset-top));border-width:1px 0 0;border-radius:25px 25px 0 0;padding-bottom:env(safe-area-inset-bottom);transform:translateY(34px)}
+  .modal-drag-handle{display:block;position:sticky;z-index:3;top:0;width:42px;height:5px;margin:9px auto 2px;border-radius:99px;background:#c2cec9}
+  .modal-head{position:sticky;z-index:2;top:16px;grid-template-columns:45px minmax(0,1fr) 40px;gap:11px;padding:13px 16px 16px;border-bottom-color:#e4ece9;background:rgba(248,252,250,.96);backdrop-filter:blur(14px)}
+  .modal-heading-icon{width:45px;height:45px;border-radius:14px}
+  .modal-heading-icon svg{width:21px;height:21px}
+  .modal-head h2{font-size:1.06rem}
+  .modal-head p{font-size:.68rem}
+  .modal-form{grid-template-columns:1fr;padding:18px 16px 20px;gap:14px}
+  .modal-form>*{grid-column:1/-1}
+  .modal-form input,.modal-form select{height:48px}
+  .modal-actions{position:sticky;z-index:2;bottom:0;grid-column:1/-1;display:grid;grid-template-columns:1fr 1.2fr;margin:7px -16px -20px;padding:13px 16px calc(13px + env(safe-area-inset-bottom));border-top:1px solid #e4ece9;background:rgba(255,255,255,.96);backdrop-filter:blur(14px)}
+  .confirmation-backdrop{align-items:end;padding:0}
+  .confirmation-dialog{width:100%;padding:29px 20px calc(20px + env(safe-area-inset-bottom));border-width:1px 0 0;border-radius:25px 25px 0 0;transform:translateY(34px)}
+  .confirmation-icon{width:56px;height:56px;border-radius:18px}
+  .confirmation-actions .button{min-height:48px}
+  .notification-panel{top:calc(68px + env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));width:auto;max-height:calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom));border-radius:20px;transform-origin:top center}
+  .toast{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:calc(88px + env(safe-area-inset-bottom));max-width:none;border-radius:15px}
+}
+
+@media(prefers-reduced-motion:reduce){.modal,.confirmation-dialog,.notification-panel,.toast{transition-duration:.01ms!important}}

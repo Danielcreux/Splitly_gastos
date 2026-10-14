@@ -26,11 +26,16 @@
     document.body.style.removeProperty('overflow');
   }
 
-  function requestConfirmation({ title, message, confirmLabel = 'Confirmar' }, trigger = null) {
+  function requestConfirmation({ title, message, confirmLabel = 'Confirmar', tone = 'primary', icon = 'check' }, trigger = null) {
     if (!confirmation) return Promise.resolve(false);
+    const allowedTones = ['primary', 'danger'];
+    const allowedIcons = ['check', 'trash', 'wallet', 'log-out'];
+    const dialog = $('.confirmation-dialog', confirmation);
     $('#confirmationTitle').textContent = title;
     $('#confirmationMessage').textContent = message;
     $('[data-confirm-accept]', confirmation).textContent = confirmLabel;
+    dialog.dataset.tone = allowedTones.includes(tone) ? tone : 'primary';
+    $('#confirmationIcon').setAttribute('href', `#i-${allowedIcons.includes(icon) ? icon : 'check'}`);
     confirmationTrigger = trigger;
     confirmation.classList.add('open');
     confirmation.setAttribute('aria-hidden', 'false');
@@ -137,6 +142,7 @@
       : isMembers
         ? `Busca personas para ${record?.groupName || 'el grupo'}`
         : record ? 'Actualiza los datos de este gasto' : 'Registra un nuevo gasto compartido';
+    $('#modalHeadingIcon').setAttribute('href', isGroup || isMembers ? '#i-users' : record ? '#i-edit' : '#i-receipt');
     if (isMembers) {
       activeForm.elements.group_id.value = record?.groupId || '';
     } else if (!isGroup) {
@@ -201,6 +207,7 @@
     panel.classList.remove('hidden');
     $('#modalTitle').textContent = groupName;
     $('#modalSubtitle').textContent = 'Cargando integrantes…';
+    $('#modalHeadingIcon').setAttribute('href', '#i-users');
     const list = $('[data-group-member-list]', panel);
     list.replaceChildren();
     modal.classList.add('open');
@@ -714,13 +721,25 @@
     const deleteButton = event.target.closest('.delete-row');
     if (deleteButton) {
       const row = deleteButton.closest('tr');
-      if (!window.confirm('¿Quieres eliminar este gasto? Esta acción quedará registrada.')) return;
-      const data = new FormData();
-      data.set('expense_id', row.dataset.id);
-      postApi('api/expenses/delete.php', data).then(result => {
-        row.remove();
-        notify(result.message);
-      }).catch(error => notify(error.message));
+      requestConfirmation({
+        title: 'Eliminar gasto',
+        message: '¿Quieres eliminar este gasto? La eliminación quedará registrada en la actividad del grupo.',
+        confirmLabel: 'Eliminar gasto',
+        tone: 'danger',
+        icon: 'trash'
+      }, deleteButton).then(confirmed => {
+        if (!confirmed) return;
+        const data = new FormData();
+        data.set('expense_id', row.dataset.id);
+        deleteButton.disabled = true;
+        postApi('api/expenses/delete.php', data).then(result => {
+          row.remove();
+          notify(result.message);
+        }).catch(error => {
+          notify(error.message);
+          deleteButton.disabled = false;
+        });
+      });
     }
 
     const deleteGroupButton = event.target.closest('.delete-group');
@@ -729,7 +748,9 @@
       requestConfirmation({
         title: 'Eliminar grupo',
         message: `¿Quieres eliminar "${groupName}"? También se eliminarán sus gastos, pagos e historial. Esta acción no se puede deshacer.`,
-        confirmLabel: 'Eliminar grupo'
+        confirmLabel: 'Eliminar grupo',
+        tone: 'danger',
+        icon: 'trash'
       }, deleteGroupButton).then(confirmed => {
         if (!confirmed) return;
         const data = new FormData();
@@ -754,14 +775,23 @@
 
     const settlementButton = event.target.closest('.record-settlement');
     if (settlementButton) {
-      if (!window.confirm(`¿Confirmas la liquidación de ${Number(settlementButton.dataset.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €?`)) return;
-      const data = new FormData();
-      ['groupId', 'counterpartyId', 'amount', 'direction'].forEach(key => data.set(key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`), settlementButton.dataset[key]));
-      settlementButton.disabled = true;
-      postApi('api/settlements/create.php', data).then(result => {
-        notify(result.message);
-        setTimeout(() => window.location.reload(), 600);
-      }).catch(error => notify(error.message)).finally(() => { settlementButton.disabled = false; });
+      const formattedAmount = Number(settlementButton.dataset.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 });
+      requestConfirmation({
+        title: 'Confirmar liquidación',
+        message: `Se registrará una liquidación de ${formattedAmount} € y se actualizarán los saldos del grupo.`,
+        confirmLabel: 'Registrar pago',
+        tone: 'primary',
+        icon: 'wallet'
+      }, settlementButton).then(confirmed => {
+        if (!confirmed) return;
+        const data = new FormData();
+        ['groupId', 'counterpartyId', 'amount', 'direction'].forEach(key => data.set(key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`), settlementButton.dataset[key]));
+        settlementButton.disabled = true;
+        postApi('api/settlements/create.php', data).then(result => {
+          notify(result.message);
+          setTimeout(() => window.location.reload(), 600);
+        }).catch(error => notify(error.message)).finally(() => { settlementButton.disabled = false; });
+      });
     }
     if (event.target.closest('.group-detail')) {
       const groupId = event.target.closest('.group-card')?.dataset.groupDetails;
@@ -886,7 +916,9 @@
     requestConfirmation({
       title: 'Revocar token del Atajo',
       message: 'El Atajo dejará de funcionar hasta que generes y guardes un token nuevo.',
-      confirmLabel: 'Revocar token'
+      confirmLabel: 'Revocar token',
+      tone: 'danger',
+      icon: 'log-out'
     }, event.currentTarget).then(confirmed => {
       if (!confirmed) return;
       const data = new FormData();

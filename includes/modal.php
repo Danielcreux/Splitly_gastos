@@ -1,6 +1,11 @@
 <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-head"><div><h2 id="modalTitle">Añadir gasto</h2><p id="modalSubtitle">Registra un nuevo gasto compartido</p></div><button class="icon-button" data-close-modal><svg><use href="#i-x"/></svg></button></div>
+    <div class="modal-drag-handle" aria-hidden="true"></div>
+    <div class="modal-head">
+      <div class="modal-heading-icon" aria-hidden="true"><svg><use id="modalHeadingIcon" href="#i-receipt"/></svg></div>
+      <div class="modal-heading-copy"><h2 id="modalTitle">Añadir gasto</h2><p id="modalSubtitle">Registra un nuevo gasto compartido</p></div>
+      <button type="button" class="icon-button modal-close" data-close-modal aria-label="Cerrar ventana"><svg><use href="#i-x"/></svg></button>
+    </div>
 
     <form id="expenseForm" class="modal-form">
       <input type="hidden" name="expense_id" value="">
@@ -49,13 +54,13 @@
 </div>
 
 <div class="confirmation-backdrop" id="confirmationBackdrop" aria-hidden="true">
-  <div class="confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
-    <div class="confirmation-icon" aria-hidden="true"><svg><use href="#i-trash"/></svg></div>
+  <div class="confirmation-dialog" data-tone="danger" role="alertdialog" aria-modal="true" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
+    <div class="confirmation-icon" aria-hidden="true"><svg><use id="confirmationIcon" href="#i-trash"/></svg></div>
     <h2 id="confirmationTitle">Eliminar grupo</h2>
     <p id="confirmationMessage"></p>
     <div class="confirmation-actions">
       <button type="button" class="button button-outline" data-confirm-cancel>Cancelar</button>
-      <button type="button" class="button confirmation-danger" data-confirm-accept>Eliminar grupo</button>
+      <button type="button" class="button confirmation-accept" data-confirm-accept>Eliminar grupo</button>
     </div>
   </div>
 </div>

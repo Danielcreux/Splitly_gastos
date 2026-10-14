@@ -12,7 +12,9 @@ $userId = (int) $authenticatedUser['id'];
 try {
     $repository = new SplitlyRepository($db);
     $user = $repository->userById($userId);
-    $groups = $repository->groupsForUser($userId);
+    // The dashboard only renders four cards. Limit the query at the source so
+    // opening Inicio never fetches the user's complete group history.
+    $groups = $repository->groupsForUser($userId, 4);
     $recentExpenses = $repository->expensesForUser($userId, 5);
     $balances = $repository->balancesForUser($userId, 0);
 
@@ -59,7 +61,7 @@ try {
         'balance' => round((float) ($groupBalances[(int) $group['id']] ?? 0), 2),
         'totalSpent' => (float) $group['total'],
         'icon' => $group['icon'] ?? 'users',
-    ], array_slice($groups, 0, 4));
+    ], $groups);
 
     respond([
         'ok' => true,
