@@ -16,6 +16,27 @@
   const participantPickers = new WeakMap();
   let resolveConfirmation = null;
   let confirmationTrigger = null;
+  let modalTrigger = null;
+
+  function focusableElements(container) {
+    return $$('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])', container)
+      .filter(element => !element.closest('.hidden') && element.getClientRects().length > 0);
+  }
+
+  function trapFocus(event, container) {
+    if (event.key !== 'Tab' || !container) return;
+    const focusable = focusableElements(container);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   function syncBodyScrollLock() {
     const mobileSidebarOpen = window.matchMedia('(max-width: 860px)').matches && sidebar?.classList.contains('open');
@@ -28,6 +49,7 @@
 
   function requestConfirmation({ title, message, confirmLabel = 'Confirmar', tone = 'primary', icon = 'check' }, trigger = null) {
     if (!confirmation) return Promise.resolve(false);
+    if (resolveConfirmation) closeConfirmation(false);
     const allowedTones = ['primary', 'danger'];
     const allowedIcons = ['check', 'trash', 'wallet', 'log-out'];
     const dialog = $('.confirmation-dialog', confirmation);
@@ -57,7 +79,9 @@
   }
 
   function closeNotifications() {
-    $('#notificationPanel')?.classList.remove('open');
+    const panel = $('#notificationPanel');
+    panel?.classList.remove('open');
+    panel?.setAttribute('aria-hidden', 'true');
     $('#notificationToggle')?.setAttribute('aria-expanded', 'false');
   }
 
@@ -130,6 +154,7 @@
     const isGroup = type === 'group';
     const isMembers = type === 'members';
     const activeForm = isGroup ? $('#groupForm') : isMembers ? $('#memberForm') : $('#expenseForm');
+    modalTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     activeForm.reset();
     resetParticipantPicker(activeForm);
     $('#expenseForm').classList.toggle('hidden', isGroup || isMembers);
@@ -195,11 +220,12 @@
       more.hidden = !result.pagination.has_next;
     } catch (error) {
       if (!append) list.replaceChildren(textElement('p', error.message || 'Error de red.'));
-      notify(error.message || 'No se pudieron cargar los integrantes.');
+      notify(error.message || 'No se pudieron cargar los integrantes.', 'error');
     } finally { more.disabled = false; }
   }
 
   async function openGroupDetails(groupId, groupName) {
+    modalTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     $('#expenseForm').classList.add('hidden');
     $('#groupForm').classList.add('hidden');
     $('#memberForm').classList.add('hidden');
@@ -246,18 +272,26 @@
       $('[data-notification-list]').append(...result.data.map(notificationElement));
       button.dataset.page = String(result.pagination.page);
       button.hidden = !result.pagination.has_next;
-    } catch (error) { notify(error.message || 'No se pudieron cargar las notificaciones.'); }
+    } catch (error) { notify(error.message || 'No se pudieron cargar las notificaciones.', 'error'); }
     finally { button.disabled = false; }
   }
 
   function closeModal() {
+    if (!modal?.classList.contains('open')) return;
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     syncBodyScrollLock();
+    modalTrigger?.focus();
+    modalTrigger = null;
   }
 
-  function notify(message) {
+  function notify(message, tone = 'success') {
+    const isError = tone === 'error';
     $('span', toast).textContent = message;
+    toast.dataset.tone = isError ? 'error' : 'success';
+    toast.setAttribute('role', isError ? 'alert' : 'status');
+    toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+    $('#toastIcon')?.setAttribute('href', isError ? '#i-x' : '#i-check');
     toast.classList.add('show');
     clearTimeout(notify.timer);
     notify.timer = setTimeout(() => toast.classList.remove('show'), 2600);
@@ -385,7 +419,7 @@
       $('[data-page-next]', navigation).disabled = !result.pagination.has_next;
       navigation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (error) {
-      if (error.name !== 'AbortError') notify(error.message || 'No se pudo cargar la página.');
+      if (error.name !== 'AbortError') notify(error.message || 'No se pudo cargar la página.', 'error');
     }
     if (paginationRequests.get(navigation) === controller) {
       navigation.dataset.loading = '0';
@@ -670,7 +704,7 @@
       form.reset();
       setTimeout(() => window.location.reload(), 650);
     } catch (error) {
-      notify(error.message || 'Ha ocurrido un error inesperado.');
+      notify(error.message || 'Ha ocurrido un error inesperado.', 'error');
     } finally {
       submitButton.disabled = false;
       submitButton.textContent = originalText;
@@ -708,7 +742,7 @@
         invitation.remove();
         setTimeout(() => window.location.reload(), 650);
       }).catch(error => {
-        notify(error.message);
+        notify(error.message, 'error');
         $$('button', invitation).forEach(button => { button.disabled = false; });
       });
     }
@@ -736,7 +770,7 @@
           row.remove();
           notify(result.message);
         }).catch(error => {
-          notify(error.message);
+          notify(error.message, 'error');
           deleteButton.disabled = false;
         });
       });
@@ -761,7 +795,7 @@
           notify(result.message);
           setTimeout(() => window.location.reload(), 650);
         }).catch(error => {
-          notify(error.message);
+          notify(error.message, 'error');
           deleteGroupButton.disabled = false;
         });
       });
@@ -770,7 +804,7 @@
     const editButton = event.target.closest('.edit-expense');
     if (editButton) {
       try { openModal('expense', JSON.parse(editButton.closest('tr').dataset.expense)); }
-      catch { notify('No se pudieron cargar los datos del gasto.'); }
+      catch { notify('No se pudieron cargar los datos del gasto.', 'error'); }
     }
 
     const settlementButton = event.target.closest('.record-settlement');
@@ -790,7 +824,7 @@
         postApi('api/settlements/create.php', data).then(result => {
           notify(result.message);
           setTimeout(() => window.location.reload(), 600);
-        }).catch(error => notify(error.message)).finally(() => { settlementButton.disabled = false; });
+        }).catch(error => notify(error.message, 'error')).finally(() => { settlementButton.disabled = false; });
       });
     }
     if (event.target.closest('.group-detail')) {
@@ -808,7 +842,7 @@
         headers: { 'X-CSRF-Token': $('meta[name="csrf-token"]').content }
       }).then(response => response.json()).then(result => {
         window.location.href = result.redirect || 'login.php';
-      }).catch(() => notify('No se pudo cerrar la sesión.'));
+      }).catch(() => notify('No se pudo cerrar la sesión.', 'error'));
     }
   });
 
@@ -830,6 +864,7 @@
     const panel = $('#notificationPanel');
     const open = panel.classList.toggle('open');
     event.currentTarget.setAttribute('aria-expanded', String(open));
+    panel.setAttribute('aria-hidden', String(!open));
     if (open) {
       postApi('api/notifications/read.php', new FormData()).then(() => {
         $('.notification > span')?.remove();
@@ -866,7 +901,7 @@
     const form = event.currentTarget;
     const members = window.SplitlyData?.groupMembers?.[String(form.elements.group_id.value)] || [];
     if (form.elements.split_expense.checked && members.length < 2) {
-      notify('Para dividir el gasto, el grupo debe tener al menos dos participantes activos.');
+      notify('Para dividir el gasto, el grupo debe tener al menos dos participantes activos.', 'error');
       return;
     }
     submitToApi(event.currentTarget, event.currentTarget.dataset.endpoint || 'api/expenses/create.php');
@@ -876,7 +911,7 @@
     const picker = $('[data-participant-picker]', event.currentTarget);
     const typedParticipant = $('[data-user-search]', picker)?.value.trim();
     if (typedParticipant && !event.currentTarget.elements.participant_ids.value) {
-      notify('La persona escrita no existe o no ha sido seleccionada.');
+      notify('La persona escrita no existe o no ha sido seleccionada.', 'error');
       return;
     }
     submitToApi(event.currentTarget, 'api/groups/create.php');
@@ -884,7 +919,7 @@
   $('#memberForm')?.addEventListener('submit', event => {
     event.preventDefault();
     if (!event.currentTarget.elements.participant_ids.value) {
-      notify('Busca y selecciona al menos una persona.');
+      notify('Busca y selecciona al menos una persona.', 'error');
       return;
     }
     submitToApi(event.currentTarget, 'api/groups/add-members.php');
@@ -896,7 +931,7 @@
     postApi('api/settings/update.php', new FormData(event.currentTarget)).then(result => {
       notify(result.message);
       setTimeout(() => window.location.reload(), 650);
-    }).catch(error => notify(error.message)).finally(() => { button.disabled = false; });
+    }).catch(error => notify(error.message, 'error')).finally(() => { button.disabled = false; });
   });
   $('#settingsForm')?.addEventListener('reset', () => {
     setTimeout(() => notify('Cambios descartados.'), 0);
@@ -910,7 +945,7 @@
       $('#shortcutTokenValue').value = result.token;
       $('#shortcutTokenResult').classList.remove('hidden');
       notify('Token del Atajo creado. Guárdalo ahora.');
-    }).catch(error => notify(error.message)).finally(() => { button.disabled = false; });
+    }).catch(error => notify(error.message, 'error')).finally(() => { button.disabled = false; });
   });
   $('#revokeShortcutToken')?.addEventListener('click', event => {
     requestConfirmation({
@@ -927,7 +962,7 @@
         $('#shortcutTokenValue').value = '';
         $('#shortcutTokenResult').classList.add('hidden');
         notify(result.message);
-      }).catch(error => notify(error.message));
+      }).catch(error => notify(error.message, 'error'));
     });
   });
   $('#copyShortcutToken')?.addEventListener('click', () => {
@@ -935,7 +970,7 @@
     if (!token) return;
     navigator.clipboard.writeText(token).then(() => notify('Token copiado.')).catch(() => {
       $('#shortcutTokenValue').select();
-      notify('Selecciona y copia el token.');
+      notify('Selecciona y copia el token.', 'error');
     });
   });
   $$('[data-settings-target]').forEach(button => button.addEventListener('click', () => {
@@ -944,7 +979,17 @@
   }));
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { closeConfirmation(false); closeModal(); closeSidebar(); closeNotifications(); }
+    if (confirmation?.classList.contains('open')) trapFocus(event, $('.confirmation-dialog', confirmation));
+    else if (modal?.classList.contains('open')) trapFocus(event, $('.modal', modal));
+    if (event.key === 'Escape') {
+      if (confirmation?.classList.contains('open')) closeConfirmation(false);
+      else if (modal?.classList.contains('open')) closeModal();
+      else if (sidebar?.classList.contains('open')) closeSidebar();
+      else if ($('#notificationPanel')?.classList.contains('open')) {
+        closeNotifications();
+        $('#notificationToggle')?.focus();
+      }
+    }
     if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-group-details]')) {
       event.preventDefault();
       openGroupDetails(event.target.dataset.groupDetails, event.target.dataset.groupName);

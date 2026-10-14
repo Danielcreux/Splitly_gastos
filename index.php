@@ -32,7 +32,7 @@
     </main>
   </div>
   <?php require __DIR__ . '/includes/modal.php'; ?>
-  <div class="toast" id="toast" role="status"><svg><use href="#i-check"/></svg><span>Gasto guardado correctamente</span></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" data-tone="success"><svg><use id="toastIcon" href="#i-check"/></svg><span>Gasto guardado correctamente</span></div>
   <?php $groupMembers = []; foreach ($groups as $group) { $groupMembers[(string) $group['id']] = $group['member_options'] ?? array_map(fn($name) => ['id' => $currentUserId, 'name' => $name], $group['members']); } ?>
   <script>window.SplitlyData = <?= json_encode(['monthlyEvolution' => $monthlyEvolution, 'databaseConnected' => $databaseConnected, 'currentUserId' => $currentUserId, 'groupMembers' => $groupMembers], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
   <script src="assets/vendor/chartjs/chart.umd.min.js"></script>

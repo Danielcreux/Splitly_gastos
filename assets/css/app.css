@@ -298,6 +298,7 @@ html,body{height:100%;overflow:hidden}
 
 .toast{min-height:48px;max-width:min(390px,calc(100vw - 32px));padding:13px 17px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:linear-gradient(135deg,#087054,#054d3a);box-shadow:0 16px 40px rgba(4,55,40,.28);font-size:.76rem;font-weight:600}
 .toast svg{flex:0 0 auto;width:19px;height:19px}
+.toast[data-tone="error"]{background:linear-gradient(135deg,#c9474e,#9f2f38);box-shadow:0 16px 40px rgba(159,47,56,.28)}
 
 @media(max-width:650px){
   .modal-backdrop{align-items:end;padding:0}

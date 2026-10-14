@@ -9,6 +9,7 @@
     if (!alert) return;
     alert.textContent = message;
     alert.classList.toggle('success', success);
+    alert.dataset.tone = success ? 'success' : 'error';
     alert.classList.add('show');
   }
 

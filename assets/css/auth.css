@@ -46,3 +46,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{min-width:320px;mi
   .auth-mode-login .auth-box header{margin-bottom:17px}
   .auth-mode-login .auth-panel footer{padding-top:14px;margin-top:14px}
 }
+
+/* Mensajes propios de Splitly para autenticación. */
+.auth-alert{align-items:flex-start;gap:10px;margin-bottom:18px;padding:13px 14px;border:1px solid #f2cfd2;border-radius:12px;background:#fff0f1;color:#a9323b;font-size:.75rem;line-height:1.45;box-shadow:0 6px 18px rgba(169,50,59,.06)}
+.auth-alert::before{content:"!";flex:0 0 22px;width:22px;height:22px;display:grid;place-items:center;border-radius:7px;background:#f8d7da;font-weight:800}
+.auth-alert.show{display:flex}
+.auth-alert.success{border-color:#c9e9dc;background:#eaf8f3;color:var(--green)}
+.auth-alert.success::before{content:"✓";background:#ccecdf}
