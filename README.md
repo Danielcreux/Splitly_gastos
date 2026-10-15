@@ -8,6 +8,10 @@ Splitly permite crear grupos, invitar participantes, registrar quién pagó cada
   <a href="https://splitly.freire-sanchez-valencia.es/"><strong>Ver demo en vivo →</strong></a>
 </p>
 
+ <a href="https://github.com/Danielcreux/Splitly_gastos/releases/latest">
+    <strong>Descargar Android →</strong>
+  </a>
+
 ## Captura
 
 ![Pantalla de inicio de sesión de Splitly](docs/screenshots/login.png)
