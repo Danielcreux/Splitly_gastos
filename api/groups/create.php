@@ -7,6 +7,9 @@ requirePost();
 $data = requestData();
 $name = trim((string) ($data['name'] ?? ''));
 $description = trim((string) ($data['description'] ?? ''));
+$requestedIcon = strtolower(trim((string) ($data['icon'] ?? '')));
+$allowedIcons = ['people', 'travel', 'pets', 'services', 'car', 'shopping', 'meat', 'medicine', 'gifts', 'entertainment', 'home', 'other'];
+$icon = $requestedIcon === '' ? 'users' : $requestedIcon;
 $participantQuery = trim((string) ($data['participant_query'] ?? ''));
 $budget = parseLocalizedDecimal($data['budget'] ?? null);
 $rawParticipantIds = $data['participant_ids'] ?? [];
@@ -21,6 +24,9 @@ $userId = currentUserId();
 
 if ($name === '' || mb_strlen($name) > 120) {
     respond(['ok' => false, 'message' => 'Indica un nombre de grupo válido.'], 422);
+}
+if ($requestedIcon !== '' && !in_array($requestedIcon, $allowedIcons, true)) {
+    respond(['ok' => false, 'message' => 'El icono del grupo no es válido.'], 422);
 }
 if ($budget === false || $budget < 0) {
     respond(['ok' => false, 'message' => 'El presupuesto no es válido.'], 422);
@@ -37,12 +43,13 @@ try {
     $db->beginTransaction();
     $statement = $db->prepare(
         "INSERT INTO expense_groups (owner_id, name, description, icon, budget)
-         VALUES (:owner_id, :name, :description, 'users', :budget)"
+         VALUES (:owner_id, :name, :description, :icon, :budget)"
     );
     $statement->execute([
         'owner_id' => $userId,
         'name' => $name,
         'description' => $description ?: null,
+        'icon' => $icon,
         'budget' => $budget,
     ]);
     $groupId = (int) $db->lastInsertId();

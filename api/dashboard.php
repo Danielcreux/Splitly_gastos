@@ -18,16 +18,25 @@ try {
     $recentExpenses = $repository->expensesForUser($userId, 5);
     $balances = $repository->balancesForUser($userId, 0);
 
-    $monthlyStatement = $db->prepare(
-        "SELECT COALESCE(SUM(es.amount_owed), 0) AS total
+    $expenseSummaryStatement = $db->prepare(
+        "SELECT COALESCE(SUM(CASE
+                    WHEN e.expense_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
+                     AND e.expense_date < DATE_ADD(DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+                    THEN es.amount_owed ELSE 0 END), 0) AS month_spent,
+                (SELECT COUNT(*)
+                   FROM expenses registered
+                   INNER JOIN group_members membership ON membership.group_id = registered.group_id
+                      AND membership.user_id = :count_user_id AND membership.status = 'active'
+                  WHERE registered.status = 'active') AS expense_count
          FROM expense_splits es
          INNER JOIN expenses e ON e.id = es.expense_id AND e.status = 'active'
-         WHERE es.user_id = :user_id
-           AND e.expense_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
-           AND e.expense_date < DATE_ADD(DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01'), INTERVAL 1 MONTH)"
+         WHERE es.user_id = :summary_user_id"
     );
-    $monthlyStatement->execute(['user_id' => $userId]);
-    $monthSpent = (float) $monthlyStatement->fetchColumn();
+    $expenseSummaryStatement->execute([
+        'count_user_id' => $userId,
+        'summary_user_id' => $userId,
+    ]);
+    $expenseSummary = $expenseSummaryStatement->fetch() ?: ['month_spent' => 0, 'expense_count' => 0];
 
     $owedToUser = 0.0;
     $userOwes = 0.0;
@@ -71,7 +80,8 @@ try {
             'balance' => round($owedToUser - $userOwes, 2),
             'owes' => round($userOwes, 2),
             'owedToUser' => round($owedToUser, 2),
-            'monthSpent' => round($monthSpent, 2),
+            'monthSpent' => round((float) $expenseSummary['month_spent'], 2),
+            'expenseCount' => (int) $expenseSummary['expense_count'],
         ],
         'recentExpenses' => $expensePayload,
         'activeGroups' => $groupPayload,
