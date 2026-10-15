@@ -20,6 +20,4 @@ Esto permite registrar un gasto sin necesidad de abrir la aplicación web o móv
 
 > En la primera ejecución, el atajo solicitará el token API generado desde la configuración de tu cuenta de Splitly.
 
-También puedes consultar la documentación técnica:
 
-**[Guía de configuración del Atajo](docs/atajo-ios.md)**
