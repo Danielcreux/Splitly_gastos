@@ -1,3 +1,13 @@
+<?php
+$balanceDescriptions = [];
+foreach ($expenses as $expense) {
+    $groupId = (int) ($expense['group_id'] ?? 0);
+    $description = trim((string) ($expense['description'] ?? ''));
+    if ($groupId > 0 && $description !== '') {
+        $balanceDescriptions[$groupId][$description] = true;
+    }
+}
+?>
 <section class="app-view" id="view-balances" data-title="Quién debe a quién" data-subtitle="Soluciona deudas con menos transferencias">
   <div class="balance-layout">
     <div>
@@ -8,9 +18,10 @@
       </div>
       <article class="panel balance-list"><div class="panel-header"><div><h2>Balances</h2><p>Saldos calculados a partir de gastos y pagos reales</p></div></div>
         <?php foreach ($balances as $i => $balance): ?>
-          <div class="balance-row searchable" data-search="<?= e(mb_strtolower($balance['name'] . ' ' . $balance['detail'])) ?>">
+          <?php $description = implode(', ', array_keys($balanceDescriptions[(int) $balance['group_id']] ?? [])); ?>
+          <div class="balance-row searchable" data-search="<?= e(mb_strtolower($balance['name'] . ' ' . $balance['detail'] . ' ' . $description)) ?>">
             <div class="avatar <?= $i % 2 ? 'peach' : '' ?>"><?= e(initials($balance['name'])) ?></div>
-            <div class="balance-person"><strong><?= e($balance['name']) ?></strong><span><?= e($balance['detail']) ?></span></div>
+            <div class="balance-person"><strong><?= e($balance['name']) ?></strong><span><?= e($balance['detail']) ?><?= $description !== '' ? ' · ' . e($description) : '' ?></span></div>
             <strong class="<?= $balance['amount'] > 0 ? 'success' : 'danger' ?>"><?= ($balance['amount'] > 0 ? '+' : '-') . money($balance['amount']) ?></strong>
             <button class="button <?= $balance['amount'] > 0 ? 'button-blue' : 'button-primary' ?> record-settlement" data-group-id="<?= (int) $balance['group_id'] ?>" data-counterparty-id="<?= (int) $balance['user_id'] ?>" data-amount="<?= abs((float) $balance['amount']) ?>" data-direction="<?= $balance['amount'] > 0 ? 'paid_to_me' : 'paid_by_me' ?>"><?= $balance['amount'] > 0 ? 'Marcar recibido' : 'Marcar pagado' ?></button>
           </div>
